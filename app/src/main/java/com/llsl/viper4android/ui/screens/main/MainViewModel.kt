@@ -10,6 +10,7 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.IBinder
+import androidx.compose.runtime.Immutable
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -74,6 +75,7 @@ import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import kotlin.time.Duration.Companion.milliseconds
 
+@Immutable
 data class DriverStatus(
     val installed: Boolean = false,
     val versionCode: Int = -1,
@@ -83,6 +85,7 @@ data class DriverStatus(
     val samplingRate: Int = 0,
 )
 
+@Immutable
 data class UpdateState(
     val checking: Boolean = false,
     val downloading: Boolean = false,
@@ -92,10 +95,18 @@ data class UpdateState(
     val error: String? = null,
 )
 
+@Immutable
 data class InstalledAppInfo(
     val packageName: String,
     val label: String,
     val isSystemApp: Boolean,
+)
+
+@Immutable
+data class ManagedAudioFile(
+    val name: String,
+    val sizeBytes: Long,
+    val lastModified: Long,
 )
 
 @Suppress("StaticFieldLeak")
@@ -134,6 +145,12 @@ class MainViewModel
 
         val kernelFileList: StateFlow<List<String>>
             field: MutableStateFlow<List<String>> = MutableStateFlow(emptyList())
+
+        val vdcFileItems: StateFlow<List<ManagedAudioFile>>
+            field: MutableStateFlow<List<ManagedAudioFile>> = MutableStateFlow(emptyList())
+
+        val kernelFileItems: StateFlow<List<ManagedAudioFile>>
+            field: MutableStateFlow<List<ManagedAudioFile>> = MutableStateFlow(emptyList())
 
         val autoStartEnabled: StateFlow<Boolean>
             field: MutableStateFlow<Boolean> = MutableStateFlow(false)
@@ -1130,6 +1147,15 @@ class MainViewModel
             viewModelScope.launch { repository.deleteDeviceSettings(deviceId) }
         }
 
+        fun deleteDeviceSettingsBatch(deviceIds: Set<String>) {
+            if (deviceIds.isEmpty()) return
+            viewModelScope.launch {
+                deviceIds.forEach { deviceId ->
+                    repository.deleteDeviceSettings(deviceId)
+                }
+            }
+        }
+
         fun saveDevicePreset(deviceId: String) {
             viewModelScope.launch {
                 val existing = repository.getDeviceSettings(deviceId) ?: return@launch
@@ -1390,17 +1416,34 @@ class MainViewModel
 
         fun refreshFileLists() {
             val ddcDir = getFilesDir("DDC")
-            vdcFileList.value = ddcDir
+            val vdcFiles = ddcDir
                 .listFiles()
-                ?.filter { it.extension == "vdc" }
-                ?.map { it.nameWithoutExtension }
-                ?.sorted() ?: emptyList()
+                ?.filter { it.isFile && it.extension.equals("vdc", ignoreCase = true) }
+                ?.sortedBy { it.nameWithoutExtension.lowercase(Locale.ROOT) }
+                ?: emptyList()
+            vdcFileList.value = vdcFiles.map { it.nameWithoutExtension }
+            vdcFileItems.value = vdcFiles.map { file ->
+                ManagedAudioFile(
+                    name = file.nameWithoutExtension,
+                    sizeBytes = file.length(),
+                    lastModified = file.lastModified(),
+                )
+            }
 
             val kernelDir = getFilesDir("Kernel")
-            kernelFileList.value = kernelDir
+            val kernelFiles = kernelDir
                 .listFiles()
-                ?.map { it.name }
-                ?.sorted() ?: emptyList()
+                ?.filter { it.isFile }
+                ?.sortedBy { it.name.lowercase(Locale.ROOT) }
+                ?: emptyList()
+            kernelFileList.value = kernelFiles.map { it.name }
+            kernelFileItems.value = kernelFiles.map { file ->
+                ManagedAudioFile(
+                    name = file.name,
+                    sizeBytes = file.length(),
+                    lastModified = file.lastModified(),
+                )
+            }
         }
 
         fun deleteVdcFile(name: String): Boolean {
@@ -1423,6 +1466,78 @@ class MainViewModel
             }
         }
 
+        fun deleteVdcFiles(names: Collection<String>): Int {
+            if (names.isEmpty()) return 0
+            return try {
+                val dir = getFilesDir("DDC")
+                var deleted = 0
+                for (name in names) {
+                    val file = File(dir, "$name.vdc")
+                    if (file.exists() && file.delete()) deleted++
+                }
+                if (uiState.value.ddc.device in names) {
+                    applyPref(Effects.ddc.device, "")
+                    if (uiState.value.ddc.enable && uiState.value.masterEnable) {
+                        ddcJob?.cancel()
+                        ddcJob = viewModelScope.launch(Dispatchers.IO) { applyDdcDevice("", wasEnabled = true) }
+                    }
+                }
+                refreshFileLists()
+                deleted
+            } catch (e: Exception) {
+                FileLogger.e("ViewModel", "Failed to batch delete VDC files", e)
+                0
+            }
+        }
+
+        fun renameVdcFile(oldName: String, newName: String): Boolean {
+            val sanitized = newName.trim().removeSuffix(".vdc").removeSuffix(".VDC").trim()
+            if (sanitized.isEmpty() || sanitized == oldName || sanitized.contains('/') || sanitized.contains('\\')) {
+                return false
+            }
+            return try {
+                val dir = getFilesDir("DDC")
+                val src = File(dir, "$oldName.vdc")
+                val dst = File(dir, "$sanitized.vdc")
+                if (!src.exists() || dst.exists()) return false
+                if (!src.renameTo(dst)) return false
+                if (uiState.value.ddc.device == oldName) {
+                    applyPref(Effects.ddc.device, sanitized)
+                    if (uiState.value.ddc.enable && uiState.value.masterEnable) {
+                        ddcJob?.cancel()
+                        ddcJob = viewModelScope.launch(Dispatchers.IO) { applyDdcDevice(sanitized, wasEnabled = true) }
+                    }
+                }
+                refreshFileLists()
+                true
+            } catch (e: Exception) {
+                FileLogger.e("ViewModel", "Failed to rename VDC: $oldName -> $newName", e)
+                false
+            }
+        }
+
+        fun clearAllVdcFiles(): Int {
+            return try {
+                val dir = getFilesDir("DDC")
+                var deleted = 0
+                dir.listFiles()
+                    ?.filter { it.isFile && it.extension.equals("vdc", ignoreCase = true) }
+                    ?.forEach { if (it.delete()) deleted++ }
+                if (uiState.value.ddc.device.isNotEmpty()) {
+                    applyPref(Effects.ddc.device, "")
+                    if (uiState.value.ddc.enable && uiState.value.masterEnable) {
+                        ddcJob?.cancel()
+                        ddcJob = viewModelScope.launch(Dispatchers.IO) { applyDdcDevice("", wasEnabled = true) }
+                    }
+                }
+                refreshFileLists()
+                deleted
+            } catch (e: Exception) {
+                FileLogger.e("ViewModel", "Failed to clear all VDC files", e)
+                0
+            }
+        }
+
         fun deleteKernelFile(fileName: String): Boolean {
             return try {
                 val file = File(getFilesDir("Kernel"), fileName)
@@ -1439,6 +1554,77 @@ class MainViewModel
             } catch (e: Exception) {
                 FileLogger.e("ViewModel", "Failed to delete kernel: $fileName", e)
                 false
+            }
+        }
+
+        fun deleteKernelFiles(fileNames: Collection<String>): Int {
+            if (fileNames.isEmpty()) return 0
+            return try {
+                val dir = getFilesDir("Kernel")
+                var deleted = 0
+                for (fileName in fileNames) {
+                    val file = File(dir, fileName)
+                    if (file.exists() && file.delete()) deleted++
+                }
+                if (uiState.value.convolver.kernelFile in fileNames) {
+                    applyPref(Effects.convolver.kernelFile, "")
+                    if (uiState.value.convolver.enable) {
+                        viewModelScope.launch(Dispatchers.IO) { applyConvolverKernel("") }
+                    }
+                }
+                refreshFileLists()
+                deleted
+            } catch (e: Exception) {
+                FileLogger.e("ViewModel", "Failed to batch delete kernel files", e)
+                0
+            }
+        }
+
+        fun renameKernelFile(oldName: String, newName: String): Boolean {
+            val trimmed = newName.trim()
+            if (trimmed.isEmpty() || trimmed.contains('/') || trimmed.contains('\\')) return false
+            val oldExt = oldName.substringAfterLast('.', "")
+            val hasSupportedExt = trimmed.substringAfterLast('.', "").lowercase(Locale.ROOT) in setOf("wav", "irs")
+            val finalName = if (hasSupportedExt || oldExt.isEmpty()) trimmed else "$trimmed.$oldExt"
+            if (finalName == oldName) return false
+            return try {
+                val dir = getFilesDir("Kernel")
+                val src = File(dir, oldName)
+                val dst = File(dir, finalName)
+                if (!src.exists() || dst.exists()) return false
+                if (!src.renameTo(dst)) return false
+                if (uiState.value.convolver.kernelFile == oldName) {
+                    applyPref(Effects.convolver.kernelFile, finalName)
+                    if (uiState.value.convolver.enable) {
+                        viewModelScope.launch(Dispatchers.IO) { applyConvolverKernel(finalName) }
+                    }
+                }
+                refreshFileLists()
+                true
+            } catch (e: Exception) {
+                FileLogger.e("ViewModel", "Failed to rename kernel: $oldName -> $newName", e)
+                false
+            }
+        }
+
+        fun clearAllKernelFiles(): Int {
+            return try {
+                val dir = getFilesDir("Kernel")
+                var deleted = 0
+                dir.listFiles()
+                    ?.filter { it.isFile }
+                    ?.forEach { if (it.delete()) deleted++ }
+                if (uiState.value.convolver.kernelFile.isNotEmpty()) {
+                    applyPref(Effects.convolver.kernelFile, "")
+                    if (uiState.value.convolver.enable) {
+                        viewModelScope.launch(Dispatchers.IO) { applyConvolverKernel("") }
+                    }
+                }
+                refreshFileLists()
+                deleted
+            } catch (e: Exception) {
+                FileLogger.e("ViewModel", "Failed to clear all kernel files", e)
+                0
             }
         }
 
@@ -1486,6 +1672,22 @@ class MainViewModel
                     File(getFilesDir("Preset"), "${preset.name}.json").delete()
                 } catch (e: Exception) {
                     FileLogger.e("ViewModel", "deletePreset: file remove failed", e)
+                }
+            }
+        }
+
+        fun deletePresets(ids: Set<Long>) {
+            if (ids.isEmpty()) return
+            viewModelScope.launch(Dispatchers.IO) {
+                val dir = getFilesDir("Preset")
+                ids.forEach { id ->
+                    val preset = repository.getPresetById(id) ?: return@forEach
+                    repository.deletePresetById(id)
+                    try {
+                        File(dir, "${preset.name}.json").delete()
+                    } catch (e: Exception) {
+                        FileLogger.e("ViewModel", "deletePresets: file remove failed for id=$id", e)
+                    }
                 }
             }
         }

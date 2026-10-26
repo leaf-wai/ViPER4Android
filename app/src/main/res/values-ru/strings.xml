@@ -247,6 +247,8 @@
     <string name="settings_auto_start_desc">Запуск аудиослужбы V4A при загрузке устройства</string>
     <string name="settings_global_mode_desc">Применять эффекты глобально для всей системы</string>
     <string name="settings_excluded_apps_desc">Пропускать аудиосессии для выбранных приложений</string>
+    <string name="settings_debug_mode">Режим отладки</string>
+    <string name="settings_debug_mode_desc">Показывать вход в лог отладки</string>
     <string name="settings_import_preset_desc">Импортирование файла профиля .json</string>
     <string name="settings_import_kernel_desc">Импортирование файла импульсного отклика .irs или .wav</string>
     <string name="settings_import_vdc_desc">Импортирование файла профиля цифровой корекции .vdc</string>
@@ -353,4 +355,49 @@
     <string name="ds_device_high_end_headphone_v1">High-End наушники (v1)</string>
     <string name="ds_device_common_headphone_v1">Стандартные наушники (v1)</string>
     <string name="ds_device_common_earphone_v1">Внутриканальные наушники (v1)</string>
+
+    <!-- Overview Tab -->
+    <string name="overview_driver_working">Работает</string>
+    <string name="overview_driver_installed">Установлен</string>
+    <string name="overview_driver_not_installed">Не установлен</string>
+    <string name="overview_driver_version_format">Версия: %1$s</string>
+    <string name="overview_driver_mode">Режим работы</string>
+    <string name="overview_status_standby">Ожидание</string>
+    <string name="overview_mode_aidl">AIDL</string>
+    <string name="overview_mode_legacy">Legacy</string>
+
+    <!-- Common & Presets -->
+    <string name="common_more">Ещё</string>
+    <string name="preset_section_title">Сохранённые профили</string>
+    <string name="preset_empty_desc">Сохраните текущие настройки звука или импортируйте файл профиля .json</string>
+    <string name="preset_loaded_toast">Загружен профиль: %1$s</string>
+    <string name="preset_saved_toast">Сохранён профиль: %1$s</string>
+    <string name="preset_updated_toast">Обновлён профиль: %1$s</string>
+    <string name="preset_renamed_toast">Переименован профиль: %1$s</string>
+    <string name="preset_deleted_toast">Удалён профиль: %1$s</string>
+
+    <!-- Imported Audio Files Management -->
+    <string name="files_kernel_title">Файлы импульсов</string>
+    <string name="files_vdc_title">Файлы VDC</string>
+    <string name="files_kernel_empty">Нет импортированных файлов импульсов</string>
+    <string name="files_kernel_empty_desc">Импортируйте файлы .wav или .irs для конвольвера</string>
+    <string name="files_vdc_empty">Нет импортированных файлов VDC</string>
+    <string name="files_vdc_empty_desc">Импортируйте файлы калибровки .vdc для ViPER DDC</string>
+    <string name="files_in_use">Используется</string>
+    <string name="files_apply">Использовать файл</string>
+    <string name="files_applied_toast">Выбрано: %1$s</string>
+    <string name="files_rename_title">Переименовать файл</string>
+    <string name="files_rename_hint">Имя файла</string>
+    <string name="files_renamed_toast">Переименовано в %1$s</string>
+    <string name="files_rename_failed">Ошибка переименования</string>
+    <string name="files_deleted_toast">Удалено: %1$s</string>
+    <string name="files_clear_all_title">Удалить все файлы</string>
+    <string name="files_clear_all_confirm">Удалить все импортированные файлы (%1$d)? Это действие нельзя отменить.</string>
+    <string name="files_multi_select">Выбрать несколько</string>
+    <string name="files_selected_count">Выбрано: %1$d</string>
+    <string name="files_select_all">Выбрать все</string>
+    <string name="files_deselect_all">Снять выделение</string>
+    <string name="files_delete_selected_title">Удалить выбранные файлы</string>
+    <string name="files_delete_selected_confirm">Удалить выбранные файлы (%1$d)? Это действие нельзя отменить.</string>
+    <string name="files_deleted_count_toast">Удалено файлов: %1$d</string>
 </resources>

@@ -9,16 +9,17 @@
             android:viewportWidth="108"
             android:viewportHeight="108">
 
+            <!-- MIUIX 主题蓝声波扩散圆环 -->
             <group
                 android:name="ring1_group"
                 android:pivotX="54"
                 android:pivotY="54"
-                android:scaleX="0.3"
-                android:scaleY="0.3">
+                android:scaleX="0.4"
+                android:scaleY="0.4">
                 <path
                     android:name="ring1"
                     android:pathData="M54,54m-20,0a20,20 0,1 1,40 0a20,20 0,1 1,-40 0"
-                    android:strokeColor="#818cf8"
+                    android:strokeColor="#54A6FF"
                     android:strokeWidth="1.2"
                     android:strokeAlpha="0"
                     android:fillColor="#00000000" />
@@ -28,12 +29,12 @@
                 android:name="ring2_group"
                 android:pivotX="54"
                 android:pivotY="54"
-                android:scaleX="0.3"
-                android:scaleY="0.3">
+                android:scaleX="0.4"
+                android:scaleY="0.4">
                 <path
                     android:name="ring2"
                     android:pathData="M54,54m-20,0a20,20 0,1 1,40 0a20,20 0,1 1,-40 0"
-                    android:strokeColor="#6366f1"
+                    android:strokeColor="#3482FF"
                     android:strokeWidth="1"
                     android:strokeAlpha="0"
                     android:fillColor="#00000000" />
@@ -43,25 +44,38 @@
                 android:name="ring3_group"
                 android:pivotX="54"
                 android:pivotY="54"
-                android:scaleX="0.3"
-                android:scaleY="0.3">
+                android:scaleX="0.4"
+                android:scaleY="0.4">
                 <path
                     android:name="ring3"
                     android:pathData="M54,54m-20,0a20,20 0,1 1,40 0a20,20 0,1 1,-40 0"
-                    android:strokeColor="#4f46e5"
+                    android:strokeColor="#1B5EEB"
                     android:strokeWidth="0.8"
                     android:strokeAlpha="0"
                     android:fillColor="#00000000" />
             </group>
 
+            <!-- 与应用图标同步的原版 ViPER V 字标志及光学居中定位，填充 MIUIX 主题蓝渐变 -->
             <group
-                android:translateX="30"
-                android:translateY="24"
-                android:scaleX="1.1"
-                android:scaleY="1.1">
+                android:translateX="25.2"
+                android:translateY="24.0"
+                android:scaleX="1.2"
+                android:scaleY="1.2">
                 <path
-                    android:pathData="M35.56,8l-8.15,19.72l-8.12,-19.71l-0.02,-0.02l-11.27,0l16.09,35.98l15.91,-35.97l-4.44,0z"
-                    android:fillColor="#7C6BF0" />
+                    android:pathData="M35.56,8l-8.15,19.72l-8.12,-19.71l-0.02,-0.02l-11.27,0l16.09,35.98l15.91,-35.97l-4.44,0z">
+                    <aapt:attr name="android:fillColor">
+                        <gradient
+                            android:type="linear"
+                            android:startX="16"
+                            android:startY="8"
+                            android:endX="32"
+                            android:endY="44">
+                            <item android:offset="0.0" android:color="#FF54A6FF" />
+                            <item android:offset="0.5" android:color="#FF3482FF" />
+                            <item android:offset="1.0" android:color="#FF1B5EEB" />
+                        </gradient>
+                    </aapt:attr>
+                </path>
             </group>
 
         </vector>
@@ -71,10 +85,10 @@
         <aapt:attr name="android:animation">
             <objectAnimator
                 android:propertyName="strokeAlpha"
-                android:valueFrom="0.6"
+                android:valueFrom="0.55"
                 android:valueTo="0"
                 android:valueType="floatType"
-                android:startOffset="200"
+                android:startOffset="150"
                 android:duration="600"
                 android:interpolator="@android:interpolator/decelerate_quad" />
         </aapt:attr>
@@ -85,18 +99,18 @@
             <set>
                 <objectAnimator
                     android:propertyName="scaleX"
-                    android:valueFrom="0.3"
-                    android:valueTo="1.8"
+                    android:valueFrom="0.4"
+                    android:valueTo="1.55"
                     android:valueType="floatType"
-                    android:startOffset="200"
+                    android:startOffset="150"
                     android:duration="600"
                     android:interpolator="@android:interpolator/decelerate_quad" />
                 <objectAnimator
                     android:propertyName="scaleY"
-                    android:valueFrom="0.3"
-                    android:valueTo="1.8"
+                    android:valueFrom="0.4"
+                    android:valueTo="1.55"
                     android:valueType="floatType"
-                    android:startOffset="200"
+                    android:startOffset="150"
                     android:duration="600"
                     android:interpolator="@android:interpolator/decelerate_quad" />
             </set>
@@ -107,10 +121,10 @@
         <aapt:attr name="android:animation">
             <objectAnimator
                 android:propertyName="strokeAlpha"
-                android:valueFrom="0.45"
+                android:valueFrom="0.4"
                 android:valueTo="0"
                 android:valueType="floatType"
-                android:startOffset="400"
+                android:startOffset="350"
                 android:duration="600"
                 android:interpolator="@android:interpolator/decelerate_quad" />
         </aapt:attr>
@@ -121,18 +135,18 @@
             <set>
                 <objectAnimator
                     android:propertyName="scaleX"
-                    android:valueFrom="0.3"
-                    android:valueTo="2.2"
+                    android:valueFrom="0.4"
+                    android:valueTo="1.75"
                     android:valueType="floatType"
-                    android:startOffset="400"
+                    android:startOffset="350"
                     android:duration="600"
                     android:interpolator="@android:interpolator/decelerate_quad" />
                 <objectAnimator
                     android:propertyName="scaleY"
-                    android:valueFrom="0.3"
-                    android:valueTo="2.2"
+                    android:valueFrom="0.4"
+                    android:valueTo="1.75"
                     android:valueType="floatType"
-                    android:startOffset="400"
+                    android:startOffset="350"
                     android:duration="600"
                     android:interpolator="@android:interpolator/decelerate_quad" />
             </set>
@@ -143,10 +157,10 @@
         <aapt:attr name="android:animation">
             <objectAnimator
                 android:propertyName="strokeAlpha"
-                android:valueFrom="0.3"
+                android:valueFrom="0.28"
                 android:valueTo="0"
                 android:valueType="floatType"
-                android:startOffset="600"
+                android:startOffset="550"
                 android:duration="600"
                 android:interpolator="@android:interpolator/decelerate_quad" />
         </aapt:attr>
@@ -157,18 +171,18 @@
             <set>
                 <objectAnimator
                     android:propertyName="scaleX"
-                    android:valueFrom="0.3"
-                    android:valueTo="2.6"
+                    android:valueFrom="0.4"
+                    android:valueTo="1.9"
                     android:valueType="floatType"
-                    android:startOffset="600"
+                    android:startOffset="550"
                     android:duration="600"
                     android:interpolator="@android:interpolator/decelerate_quad" />
                 <objectAnimator
                     android:propertyName="scaleY"
-                    android:valueFrom="0.3"
-                    android:valueTo="2.6"
+                    android:valueFrom="0.4"
+                    android:valueTo="1.9"
                     android:valueType="floatType"
-                    android:startOffset="600"
+                    android:startOffset="550"
                     android:duration="600"
                     android:interpolator="@android:interpolator/decelerate_quad" />
             </set>

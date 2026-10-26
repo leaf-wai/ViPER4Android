@@ -3,6 +3,7 @@ package com.llsl.viper4android.utils
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.runtime.Immutable
 import androidx.core.content.FileProvider
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -14,6 +15,7 @@ import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
+@Immutable
 data class ReleaseInfo(
     val tagName: String,
     val name: String,

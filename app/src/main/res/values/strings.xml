@@ -218,6 +218,9 @@
     <string name="preset_load_confirm">Load "%1$s"? Current settings will be replaced.</string>
     <string name="preset_delete_title">Delete Preset</string>
     <string name="preset_delete_confirm">Delete "%1$s"? This cannot be undone.</string>
+    <string name="preset_delete_selected_title">Delete Selected Presets</string>
+    <string name="preset_delete_selected_confirm">Delete %1$d selected presets? This cannot be undone.</string>
+    <string name="preset_deleted_count_toast">Deleted %1$d presets</string>
     <string name="preset_tap_for_details">Tap for details</string>
     <string name="preset_label_created">Created</string>
     <string name="preset_label_updated">Last Updated</string>
@@ -247,6 +250,8 @@
     <string name="settings_auto_start_desc">Start audio service on boot</string>
     <string name="settings_global_mode_desc">Apply effects globally</string>
     <string name="settings_excluded_apps_desc">Skip audio session for selected apps</string>
+    <string name="settings_debug_mode">Debug mode</string>
+    <string name="settings_debug_mode_desc">Show debug log entry</string>
     <string name="settings_import_preset_desc">Load a .json preset file</string>
     <string name="settings_import_kernel_desc">Convolver impulse response</string>
     <string name="settings_import_vdc_desc">DDC calibration file</string>
@@ -286,13 +291,20 @@
     <string name="device_label_address">Address</string>
     <string name="device_label_last_conn">Last Connected</string>
     <string name="device_no_devices">No saved devices</string>
+    <string name="device_empty_desc">Audio devices appear here automatically after they connect</string>
     <string name="device_rename_title">Rename Device</string>
+    <string name="device_rename_hint">Device name</string>
+    <string name="device_renamed_toast">Renamed device: %1$s</string>
     <string name="device_update_title">Update Device Preset</string>
     <string name="device_update_confirm">Overwrite "%1$s" preset with current settings? This cannot be undone.</string>
     <string name="device_load_title">Load Device Preset</string>
     <string name="device_load_confirm">Load "%1$s" preset? Current settings will be replaced.</string>
     <string name="device_delete_title">Delete Device Preset</string>
     <string name="device_delete_confirm">Delete the saved preset for "%1$s"? This cannot be undone.</string>
+    <string name="device_deleted_toast">Deleted device preset: %1$s</string>
+    <string name="device_delete_selected_title">Delete Selected Devices</string>
+    <string name="device_delete_selected_confirm">Delete saved presets for %1$d selected devices? Built-in and active devices will be kept.</string>
+    <string name="device_deleted_count_toast">Deleted %1$d device presets</string>
 
     <!-- Actions -->
     <string name="action_save">Save</string>
@@ -352,4 +364,82 @@
     <string name="ds_device_high_end_headphone_v1">High-End Headphone (v1)</string>
     <string name="ds_device_common_headphone_v1">Common Headphone (v1)</string>
     <string name="ds_device_common_earphone_v1">Common Earphone (v1)</string>
+
+    <!-- Navigation Tabs -->
+    <string name="tab_overview">Overview</string>
+    <string name="tab_effects">Effects</string>
+    <string name="tab_preset_device">Presets</string>
+    <string name="tab_settings">Settings</string>
+
+    <!-- Common MIUIX Dialog & Action -->
+    <string name="common_not_modified">Not Modified</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="common_confirm">Confirm</string>
+    <string name="common_collapse_all">Collapse All</string>
+    <string name="common_expand_all">Expand All</string>
+    <string name="common_refresh">Refresh</string>
+    <string name="common_more">More</string>
+
+    <!-- Overview Tab -->
+    <string name="overview_master_control">Master Control</string>
+    <string name="overview_master_summary_on">Audio processing enabled</string>
+    <string name="overview_master_summary_off">Audio processing disabled</string>
+    <string name="overview_current_device">Active Device</string>
+    <string name="overview_driver_section">Driver Status</string>
+    <string name="overview_driver_working">Working</string>
+    <string name="overview_driver_installed">Installed</string>
+    <string name="overview_driver_not_installed">Not Installed</string>
+    <string name="overview_driver_version_format">Version: %1$s</string>
+    <string name="overview_driver_mode">Working Mode</string>
+    <string name="overview_status_standby">Standby</string>
+    <string name="overview_mode_root">ROOT</string>
+    <string name="overview_mode_aidl">AIDL</string>
+    <string name="overview_mode_legacy">Legacy</string>
+    <string name="overview_mode_global">Global</string>
+    <string name="overview_mode_session">Session</string>
+
+    <!-- Effects Tab -->
+    <string name="effects_enabled_count">%1$d enabled</string>
+    <string name="effects_tap_to_edit_eq">Tap graph to open full Equalizer editor</string>
+    <string name="effects_add_band">Add Band</string>
+    <string name="effects_band_title">Band %1$d</string>
+
+    <!-- Presets -->
+    <string name="preset_section_title">Saved Presets</string>
+    <string name="preset_empty_desc">Save your current audio settings or import a .json preset file</string>
+    <string name="device_section_title">Audio Devices</string>
+    <string name="preset_loaded_toast">Loaded preset: %1$s</string>
+    <string name="preset_saved_toast">Saved preset: %1$s</string>
+    <string name="preset_updated_toast">Updated preset: %1$s</string>
+    <string name="preset_renamed_toast">Renamed preset: %1$s</string>
+    <string name="preset_deleted_toast">Deleted preset: %1$s</string>
+    <string name="device_preset_loaded_toast">Loaded device preset: %1$s</string>
+    <string name="device_preset_updated_toast">Updated device preset: %1$s</string>
+    <string name="device_actions_title">Device Actions</string>
+    <string name="preset_actions_title">Preset Actions</string>
+
+    <!-- Imported Audio Files Management -->
+    <string name="files_kernel_title">Kernel Files</string>
+    <string name="files_vdc_title">VDC Files</string>
+    <string name="files_kernel_empty">No kernel files imported</string>
+    <string name="files_kernel_empty_desc">Import .wav or .irs impulse response files for Convolver</string>
+    <string name="files_vdc_empty">No VDC files imported</string>
+    <string name="files_vdc_empty_desc">Import .vdc calibration files for ViPER DDC</string>
+    <string name="files_in_use">In Use</string>
+    <string name="files_apply">Use This File</string>
+    <string name="files_applied_toast">Selected: %1$s</string>
+    <string name="files_rename_title">Rename File</string>
+    <string name="files_rename_hint">File name</string>
+    <string name="files_renamed_toast">Renamed to %1$s</string>
+    <string name="files_rename_failed">Rename failed</string>
+    <string name="files_deleted_toast">Deleted: %1$s</string>
+    <string name="files_clear_all_title">Clear All Files</string>
+    <string name="files_clear_all_confirm">Delete all %1$d imported files? This cannot be undone.</string>
+    <string name="files_multi_select">Multi-select</string>
+    <string name="files_selected_count">%1$d selected</string>
+    <string name="files_select_all">Select All</string>
+    <string name="files_deselect_all">Deselect All</string>
+    <string name="files_delete_selected_title">Delete Selected Files</string>
+    <string name="files_delete_selected_confirm">Delete %1$d selected files? This cannot be undone.</string>
+    <string name="files_deleted_count_toast">Deleted %1$d files</string>
 </resources>

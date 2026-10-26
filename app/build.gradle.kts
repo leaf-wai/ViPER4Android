@@ -19,7 +19,7 @@ android {
 
     defaultConfig {
         applicationId = "com.llsl.viper4android"
-        minSdk = 28
+        minSdk = 33
         targetSdk = 37
         versionCode = 1
         versionName = "2.1.2"
@@ -54,8 +54,8 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
 
     buildFeatures {
@@ -65,7 +65,7 @@ android {
 
 kotlin {
     compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
     }
 }
 
@@ -79,7 +79,6 @@ dependencies {
 
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.tooling.preview)
-    implementation(libs.compose.material3)
     implementation(libs.compose.material.icons)
     debugImplementation(libs.compose.ui.tooling)
 
@@ -105,4 +104,5 @@ dependencies {
     implementation(libs.coroutines.android)
 
     implementation(libs.okhttp)
+    implementation(libs.bundles.miuix)
 }

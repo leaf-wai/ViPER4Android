@@ -1,9 +1,11 @@
 package com.llsl.viper4android.data.model
 
+import androidx.compose.runtime.Immutable
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
+@Immutable
 @Entity(tableName = "presets")
 data class Preset(
     @PrimaryKey(autoGenerate = true)

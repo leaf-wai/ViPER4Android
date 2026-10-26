@@ -1,10 +1,12 @@
 package com.llsl.viper4android.data.model
 
+import androidx.compose.runtime.Immutable
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
+@Immutable
 @Entity(
     tableName = "ds_presets",
     indices = [Index(value = ["name_key"], unique = true)],

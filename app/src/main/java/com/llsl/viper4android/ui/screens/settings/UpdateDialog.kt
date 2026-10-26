@@ -1,32 +1,18 @@
 package com.llsl.viper4android.ui.screens.settings
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -35,17 +21,20 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.DialogProperties
 import com.llsl.viper4android.R
 import com.llsl.viper4android.ui.components.DialogCard
 import com.llsl.viper4android.ui.components.UiDimens
-import com.llsl.viper4android.ui.theme.md_alert_caution
-import com.llsl.viper4android.ui.theme.md_alert_important
-import com.llsl.viper4android.ui.theme.md_alert_note
-import com.llsl.viper4android.ui.theme.md_alert_tip
-import com.llsl.viper4android.ui.theme.md_alert_warning
+import com.llsl.viper4android.ui.theme.StatusColors
 import com.llsl.viper4android.utils.ReleaseInfo
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
+import top.yukonga.miuix.kmp.basic.LinearProgressIndicator
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.squircle.squircleBackground
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.window.WindowDialog
 
 @Composable
 fun UpdateDialog(
@@ -57,53 +46,48 @@ fun UpdateDialog(
     onDownloadInstall: () -> Unit,
     onViewOnGithub: () -> Unit,
     onDismiss: () -> Unit,
+    show: Boolean = true,
 ) {
-    val bodyColor = MaterialTheme.colorScheme.onSurface
-    val headingColor = MaterialTheme.colorScheme.primary
+    val bodyColor = MiuixTheme.colorScheme.onSurface
+    val headingColor = MiuixTheme.colorScheme.primary
     val codeColor = bodyColor.copy(alpha = 0.85f)
     val blocks = remember(release.body) { parseBlocks(release.body) }
 
-    AlertDialog(
-        modifier = Modifier.fillMaxWidth(0.9f),
-        properties = DialogProperties(usePlatformDefaultWidth = false),
+    WindowDialog(
+        title = stringResource(if (upToDate) R.string.update_up_to_date_title else R.string.update_available_title),
+        show = show,
         onDismissRequest = { if (!downloading) onDismiss() },
-        title = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(stringResource(if (upToDate) R.string.update_up_to_date_title else R.string.update_available_title))
-                IconButton(onClick = onDismiss, enabled = !downloading) {
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = stringResource(R.string.action_close),
-                    )
-                }
-            }
-        },
-        text = {
-            Column {
-                Text(
-                    text = stringResource(if (upToDate) R.string.update_latest_version else R.string.update_new_version, release.name),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                Text(
-                    text = stringResource(R.string.update_current_version, currentVersion),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = UiDimens.Medium),
-                )
-                if (blocks.isNotEmpty()) {
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 500.dp),
+        ) {
+            Text(
+                text = stringResource(
+                    if (upToDate) R.string.update_latest_version else R.string.update_new_version,
+                    release.name,
+                ),
+                style = MiuixTheme.textStyles.subtitle,
+                color = MiuixTheme.colorScheme.primary,
+            )
+            Text(
+                text = stringResource(R.string.update_current_version, currentVersion),
+                style = MiuixTheme.textStyles.body2,
+                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                modifier = Modifier.padding(bottom = UiDimens.Medium),
+            )
+            if (blocks.isNotEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .verticalScroll(rememberScrollState()),
+                ) {
                     DialogCard {
                         Column(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(max = UiDimens.ReleaseNotesHeight)
-                                    .verticalScroll(rememberScrollState())
-                                    .padding(UiDimens.XLarge),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(UiDimens.XLarge),
                         ) {
                             blocks.forEach { block ->
                                 BlockView(block, bodyColor, headingColor, codeColor)
@@ -111,45 +95,52 @@ fun UpdateDialog(
                         }
                     }
                 }
-                if (downloading) {
-                    Text(
-                        text = stringResource(R.string.update_downloading, downloadProgress),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = UiDimens.XLarge),
-                    )
-                    LinearProgressIndicator(
-                        progress = { downloadProgress / 100f },
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(top = UiDimens.Compact),
-                    )
-                }
             }
-        },
-        confirmButton = {
-            Row(horizontalArrangement = Arrangement.End) {
-                FilledTonalButton(
+            if (downloading) {
+                Text(
+                    text = stringResource(R.string.update_downloading, downloadProgress),
+                    style = MiuixTheme.textStyles.body2,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    modifier = Modifier.padding(top = UiDimens.XLarge),
+                )
+                LinearProgressIndicator(
+                    progress = (downloadProgress / 100f).coerceIn(0f, 1f),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = UiDimens.Compact),
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                TextButton(
+                    text = stringResource(R.string.update_view_on_github),
                     onClick = onViewOnGithub,
                     modifier = Modifier.weight(1f),
                     enabled = !downloading,
-                ) {
-                    Text(stringResource(R.string.update_view_on_github))
-                }
+                )
                 if (!upToDate) {
-                    Spacer(modifier = Modifier.width(UiDimens.Medium))
-                    Button(
+                    TextButton(
+                        text = stringResource(R.string.update_download_install),
                         onClick = onDownloadInstall,
                         enabled = !downloading,
                         modifier = Modifier.weight(1f),
-                    ) {
-                        Text(stringResource(R.string.update_download_install))
-                    }
+                        colors = ButtonDefaults.textButtonColorsPrimary(),
+                    )
+                } else {
+                    TextButton(
+                        text = stringResource(R.string.action_close),
+                        onClick = onDismiss,
+                        enabled = !downloading,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.textButtonColorsPrimary(),
+                    )
                 }
             }
-        },
-    )
+        }
+    }
 }
 
 private sealed interface MdBlock {
@@ -207,28 +198,24 @@ private fun BlockView(
         }
 
         is MdBlock.Paragraph -> {
-            if (block.text.isNotBlank()) {
-                MdText(
-                    text = block.text,
-                    bodyColor = bodyColor,
-                    codeColor = codeColor,
-                    color = bodyColor,
-                    fontSize = 14.sp,
-                    modifier = Modifier.padding(top = UiDimens.Tiny),
-                )
-            }
+            MdText(
+                text = block.text,
+                bodyColor = bodyColor,
+                codeColor = codeColor,
+                color = bodyColor,
+                fontSize = 14.sp,
+                modifier = Modifier.padding(vertical = UiDimens.Tiny),
+            )
         }
 
         is MdBlock.Quote -> {
             val accent = alertColor(block.alert, headingColor)
             Column(
-                modifier =
-                    Modifier
-                        .padding(vertical = UiDimens.XSmall)
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(UiDimens.Compact))
-                        .background(accent.copy(alpha = 0.18f))
-                        .padding(vertical = UiDimens.Compact, horizontal = UiDimens.ListItemGap),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = UiDimens.XSmall)
+                    .squircleBackground(accent.copy(alpha = 0.18f), UiDimens.XSmall)
+                    .padding(vertical = UiDimens.Compact, horizontal = UiDimens.ListItemGap),
             ) {
                 block.alert?.let {
                     Text(
@@ -258,16 +245,17 @@ private fun headingSize(level: Int) =
         else -> 14.sp
     }
 
+@Composable
 private fun alertColor(
     alert: String?,
     default: Color,
 ): Color =
     when (alert?.uppercase()) {
-        "NOTE" -> md_alert_note
-        "TIP" -> md_alert_tip
-        "IMPORTANT" -> md_alert_important
-        "WARNING" -> md_alert_warning
-        "CAUTION" -> md_alert_caution
+        "NOTE" -> StatusColors.alertNote
+        "TIP" -> StatusColors.alertTip
+        "IMPORTANT" -> StatusColors.alertImportant
+        "WARNING" -> StatusColors.alertWarning
+        "CAUTION" -> StatusColors.alertCaution
         else -> default
     }
 
@@ -300,15 +288,11 @@ private fun parseBlocks(source: String): List<MdBlock> {
 
 private fun parseLine(trimmed: String): MdBlock? =
     when {
-        trimmed.isBlank() -> {
-            null
-        }
-
+        trimmed.isBlank() -> null
         trimmed.startsWith("#") -> {
             val level = trimmed.takeWhile { it == '#' }.length
             MdBlock.Heading(level, trimmed.drop(level).trim())
         }
-
         trimmed.startsWith("- ") || trimmed.startsWith("* ") -> {
             val rest = trimmed.drop(2)
             val task = TASK_MARKER.find(rest)
@@ -319,10 +303,7 @@ private fun parseLine(trimmed: String): MdBlock? =
                 MdBlock.Bullet("\u2022  ", rest)
             }
         }
-
-        else -> {
-            MdBlock.Paragraph(trimmed)
-        }
+        else -> MdBlock.Paragraph(trimmed)
     }
 
 @Composable
@@ -364,11 +345,9 @@ private fun buildInline(
                 bold.isNotEmpty() -> {
                     withStyle(SpanStyle(color = bodyColor, fontWeight = FontWeight.Bold)) { append(bold) }
                 }
-
                 code.isNotEmpty() -> {
                     withStyle(SpanStyle(color = codeColor, fontFamily = FontFamily.Monospace)) { append(code) }
                 }
-
                 else -> {
                     withStyle(SpanStyle(color = bodyColor)) { append(linkText) }
                 }

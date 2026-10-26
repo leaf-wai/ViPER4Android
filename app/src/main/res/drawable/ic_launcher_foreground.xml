@@ -6,23 +6,35 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
+    <!-- 柔和底层投影，增强 MIUIX / HyperOS 图标悬浮层次感 -->
     <group
-        android:translateX="30"
-        android:translateY="24"
-        android:scaleX="1.1"
-        android:scaleY="1.1">
+        android:translateX="25.2"
+        android:translateY="26.0"
+        android:scaleX="1.2"
+        android:scaleY="1.2">
+        <path
+            android:fillColor="#260A2F7A"
+            android:pathData="M35.56,8l-8.15,19.72l-8.12,-19.71l-0.02,-0.02l-11.27,0l16.09,35.98l15.91,-35.97l-4.44,0z" />
+    </group>
+
+    <!-- 保留原版 ViPER V 字标志轮廓，采用纯净白色渐变适配 MIUIX 蓝色底板 -->
+    <group
+        android:translateX="25.2"
+        android:translateY="24.0"
+        android:scaleX="1.2"
+        android:scaleY="1.2">
         <path
             android:pathData="M35.56,8l-8.15,19.72l-8.12,-19.71l-0.02,-0.02l-11.27,0l16.09,35.98l15.91,-35.97l-4.44,0z">
             <aapt:attr name="android:fillColor">
                 <gradient
                     android:type="linear"
-                    android:startX="20"
+                    android:startX="24"
                     android:startY="8"
-                    android:endX="20"
+                    android:endX="24"
                     android:endY="44">
-                    <item android:offset="0.0" android:color="#FFA78BFA" />
-                    <item android:offset="0.5" android:color="#FF6366F1" />
-                    <item android:offset="1.0" android:color="#FF2DD4BF" />
+                    <item android:offset="0.0" android:color="#FFFFFFFF" />
+                    <item android:offset="0.7" android:color="#FFF5F9FF" />
+                    <item android:offset="1.0" android:color="#FFDCEAFF" />
                 </gradient>
             </aapt:attr>
         </path>

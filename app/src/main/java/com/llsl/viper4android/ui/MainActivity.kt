@@ -15,6 +15,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         ViperService.startService(this)
         enableEdgeToEdge()
+        window.isNavigationBarContrastEnforced = false
         setContent {
             ViperTheme {
                 ViperNavigation()

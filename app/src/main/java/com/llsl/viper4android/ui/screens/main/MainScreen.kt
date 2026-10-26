@@ -1,84 +1,142 @@
 package com.llsl.viper4android.ui.screens.main
 
 import android.content.Intent
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BugReport
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.LibraryMusic
-import androidx.compose.material.icons.filled.PowerSettingsNew
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.SpeakerGroup
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FabPosition
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material.icons.automirrored.rounded.TrendingUp
+import androidx.compose.material.icons.rounded.AdminPanelSettings
+import androidx.compose.material.icons.rounded.AspectRatio
+import androidx.compose.material.icons.rounded.BlurCircular
+import androidx.compose.material.icons.rounded.BlurOn
+import androidx.compose.material.icons.rounded.BugReport
+import androidx.compose.material.icons.rounded.CandlestickChart
+import androidx.compose.material.icons.rounded.Compress
+import androidx.compose.material.icons.rounded.Equalizer
+import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.Headphones
+import androidx.compose.material.icons.rounded.HealthAndSafety
+import androidx.compose.material.icons.rounded.Hearing
+import androidx.compose.material.icons.rounded.Insights
+import androidx.compose.material.icons.rounded.LayersClear
+import androidx.compose.material.icons.rounded.Memory
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.PowerSettingsNew
+import androidx.compose.material.icons.rounded.Psychology
+import androidx.compose.material.icons.rounded.RestartAlt
+import androidx.compose.material.icons.rounded.SettingsInputComponent
+import androidx.compose.material.icons.rounded.SpatialAudio
+import androidx.compose.material.icons.rounded.Speaker
+import androidx.compose.material.icons.rounded.SpeakerPhone
+import androidx.compose.material.icons.rounded.SurroundSound
+import androidx.compose.material.icons.rounded.Terminal
+import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.VerticalAlignCenter
+import androidx.compose.material.icons.rounded.Waves
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import com.llsl.viper4android.R
+import com.llsl.viper4android.audio.AudioDevice
 import com.llsl.viper4android.effect.EffectState
-import com.llsl.viper4android.ui.components.UiDimens
-import com.llsl.viper4android.ui.screens.debug.DebugLogDialog
-import com.llsl.viper4android.ui.screens.device.DeviceDialog
-import com.llsl.viper4android.ui.screens.preset.PresetDialog
-import com.llsl.viper4android.ui.screens.settings.ExcludedAppsDialog
-import com.llsl.viper4android.ui.screens.settings.SettingsDialog
+import com.llsl.viper4android.ui.components.AdaptiveTopAppBar
+import com.llsl.viper4android.ui.components.BlurredBar
+import com.llsl.viper4android.ui.components.CardItem
+import com.llsl.viper4android.ui.components.DriverStatusCard
+import com.llsl.viper4android.ui.components.StatusBadge
+import com.llsl.viper4android.ui.components.groupedCardItems
+import com.llsl.viper4android.ui.components.layerBackdrop
+import com.llsl.viper4android.ui.components.rememberBlurBackdrop
 import com.llsl.viper4android.ui.screens.settings.UpdateDialog
 import com.llsl.viper4android.ui.screens.status.DriverStatusDialog
-import com.llsl.viper4android.ui.theme.master_on_container_dark
-import com.llsl.viper4android.ui.theme.master_on_container_light
-import com.llsl.viper4android.ui.theme.master_on_onContainer_dark
-import com.llsl.viper4android.ui.theme.master_on_onContainer_light
-import com.llsl.viper4android.ui.theme.status_active_green
+import com.llsl.viper4android.ui.theme.StatusColors
+import com.llsl.viper4android.ui.util.WideContentBox
+import com.llsl.viper4android.ui.util.rememberIsWideScreen
+import com.llsl.viper4android.ui.util.rememberPlatformToast
+import com.llsl.viper4android.utils.RootShell
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.basic.NavigationBar
+import top.yukonga.miuix.kmp.basic.NavigationBarItem
+import top.yukonga.miuix.kmp.basic.NavigationItem
+import top.yukonga.miuix.kmp.basic.NavigationRail
+import top.yukonga.miuix.kmp.basic.NavigationRailItem
+import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.SmallTitle
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.rememberNavigationRailState
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.ExpandLess
+import top.yukonga.miuix.kmp.icon.extended.ExpandMore
+import top.yukonga.miuix.kmp.icon.extended.Home
+import top.yukonga.miuix.kmp.icon.extended.Info
+import top.yukonga.miuix.kmp.icon.extended.ListView
+import top.yukonga.miuix.kmp.icon.extended.Settings
+import top.yukonga.miuix.kmp.icon.extended.Tune
+import top.yukonga.miuix.kmp.preference.ArrowPreference
+import top.yukonga.miuix.kmp.preference.SwitchPreference
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.utils.overScrollVertical
+import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(viewModel: MainViewModel = hiltViewModel()) {
-    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
-        viewModel.saveSettingsOnBackground()
-    }
-
+fun MainScreen(
+    viewModel: MainViewModel = hiltViewModel(),
+    onOpenEqScreen: () -> Unit = {},
+    onOpenPresets: () -> Unit = {},
+    onOpenDevices: () -> Unit = {},
+    onOpenExcludedApps: () -> Unit = {},
+    onOpenKernelFiles: () -> Unit = {},
+    onOpenVdcFiles: () -> Unit = {},
+    onOpenDebugLog: () -> Unit = {},
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val presets by viewModel.presetList.collectAsStateWithLifecycle()
-    val deviceSettings by viewModel.deviceSettingsList.collectAsStateWithLifecycle()
     val driverStatus by viewModel.driverStatus.collectAsStateWithLifecycle()
     val autoStart by viewModel.autoStartEnabled.collectAsStateWithLifecycle()
     val globalMode by viewModel.globalModeEnabled.collectAsStateWithLifecycle()
@@ -86,345 +144,873 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel()) {
     val debugMode by viewModel.debugModeEnabled.collectAsStateWithLifecycle()
     val updateState by viewModel.updateState.collectAsStateWithLifecycle()
     val excludedApps by viewModel.excludedApps.collectAsStateWithLifecycle()
+    val kernelFileCount by viewModel.kernelFileList.collectAsStateWithLifecycle()
+    val vdcFileCount by viewModel.vdcFileList.collectAsStateWithLifecycle()
 
-    var showPresetDialog by remember { mutableStateOf(false) }
-    var showDriverStatusDialog by remember { mutableStateOf(false) }
-    var showSettingsDialog by remember { mutableStateOf(false) }
-    var showDebugLog by remember { mutableStateOf(false) }
-    var showDeviceDialog by remember { mutableStateOf(false) }
-    var showExcludedAppsDialog by remember { mutableStateOf(false) }
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+        viewModel.saveSettingsOnBackground()
+    }
+
+    var showDriverStatusDialog by rememberSaveable { mutableStateOf(false) }
 
     val context = LocalContext.current
-    val appVersionName =
-        remember {
+    val platform = rememberPlatformToast()
+    val scope = rememberCoroutineScope()
+    val expandController = rememberEffectExpandController()
+
+    val isWideScreen = rememberIsWideScreen()
+    val pagerState = rememberPagerState(pageCount = { 3 })
+    val railState = rememberNavigationRailState()
+
+    val outerBackdrop = rememberBlurBackdrop()
+    val outerBlurActive = outerBackdrop != null
+    val outerBarColor = if (outerBlurActive) Color.Transparent else MiuixTheme.colorScheme.surface
+
+    LaunchedEffect(pagerState.currentPage, showDriverStatusDialog) {
+        if (pagerState.currentPage == 0 || showDriverStatusDialog) {
+            while (true) {
+                viewModel.queryDriverStatus()
+                delay(500L)
+            }
+        }
+    }
+
+    // 与 KernelSU 对齐：非首 Tab 时返回先平滑回到概览 Tab，位于首 Tab 时交还系统预测性返回
+    val pagerBackState = rememberNavigationEventState(NavigationEventInfo.None)
+    NavigationBackHandler(
+        state = pagerBackState,
+        isBackEnabled = pagerState.currentPage != 0,
+        onBackCompleted = {
+            scope.launch { pagerState.animateScrollToPage(0) }
+        }
+    )
+
+    val navItems = listOf(
+        NavigationItem(
+            label = stringResource(R.string.tab_overview),
+            icon = MiuixIcons.Home
+        ),
+        NavigationItem(
+            label = stringResource(R.string.tab_effects),
+            icon = MiuixIcons.Tune
+        ),
+        NavigationItem(
+            label = stringResource(R.string.tab_settings),
+            icon = MiuixIcons.Settings
+        )
+    )
+
+    val pagerContent: @Composable (Dp) -> Unit = { bottomPadding ->
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier
+                .fillMaxSize()
+                .then(if (outerBackdrop != null) Modifier.layerBackdrop(outerBackdrop) else Modifier),
+            beyondViewportPageCount = 1
+        ) { page ->
+            when (page) {
+                0 -> OverviewTab(
+                    state = state,
+                    driverStatus = driverStatus,
+                    aidlMode = aidlMode,
+                    globalMode = globalMode,
+                    viewModel = viewModel,
+                    bottomPadding = bottomPadding,
+                    onJumpToEffects = {
+                        scope.launch { pagerState.animateScrollToPage(1) }
+                    },
+                    onShowDriverDialog = { showDriverStatusDialog = true },
+                    onOpenDevices = onOpenDevices
+                )
+
+                1 -> EffectsTab(
+                    state = state,
+                    viewModel = viewModel,
+                    expandController = expandController,
+                    bottomPadding = bottomPadding,
+                    onOpenEqScreen = onOpenEqScreen,
+                    onOpenPresets = onOpenPresets,
+                    onShowDriverDialog = { showDriverStatusDialog = true },
+                    showDriverStatusDialog = showDriverStatusDialog
+                )
+
+                2 -> SettingsTab(
+                    autoStart = autoStart,
+                    globalMode = globalMode,
+                    debugMode = debugMode,
+                    excludedApps = excludedApps,
+                    kernelFileCount = kernelFileCount.size,
+                    vdcFileCount = vdcFileCount.size,
+                    updateState = updateState,
+                    viewModel = viewModel,
+                    bottomPadding = bottomPadding,
+                    onOpenExcludedApps = onOpenExcludedApps,
+                    onOpenKernelFiles = onOpenKernelFiles,
+                    onOpenVdcFiles = onOpenVdcFiles,
+                    onOpenDebugLog = onOpenDebugLog
+                )
+            }
+        }
+    }
+
+    val selectedPage = pagerState.targetPage
+    val navigateToPage: (Int) -> Unit = { target ->
+        if (target != pagerState.targetPage) {
+            scope.launch { pagerState.animateScrollToPage(target) }
+        }
+    }
+
+    if (isWideScreen) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize()
+        ) { innerPadding ->
+            Row(modifier = Modifier.fillMaxSize()) {
+                NavigationRail(
+                    state = railState,
+                    defaultWindowInsetsPadding = true,
+                    color = MiuixTheme.colorScheme.surface
+                ) {
+                    navItems.forEachIndexed { index, item ->
+                        NavigationRailItem(
+                            selected = selectedPage == index,
+                            onClick = { navigateToPage(index) },
+                            icon = item.icon,
+                            label = item.label
+                        )
+                    }
+                }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .consumeWindowInsets(WindowInsets.systemBars.only(WindowInsetsSides.Start))
+                        .windowInsetsPadding(
+                            WindowInsets.systemBars
+                                .union(WindowInsets.displayCutout)
+                                .only(WindowInsetsSides.End)
+                        )
+                ) {
+                    pagerContent(innerPadding.calculateBottomPadding())
+                }
+            }
+        }
+    } else {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            bottomBar = {
+                BlurredBar(backdrop = outerBackdrop, blurActive = outerBlurActive) {
+                    NavigationBar(
+                        color = outerBarColor
+                    ) {
+                        navItems.forEachIndexed { index, item ->
+                            NavigationBarItem(
+                                selected = selectedPage == index,
+                                onClick = { navigateToPage(index) },
+                                icon = item.icon,
+                                label = item.label
+                            )
+                        }
+                    }
+                }
+            }
+        ) { innerPadding ->
+            pagerContent(innerPadding.calculateBottomPadding())
+        }
+    }
+
+    if (showDriverStatusDialog) {
+        DriverStatusDialog(
+            driverStatus = driverStatus,
+            aidlMode = aidlMode,
+            globalMode = globalMode,
+            onDismiss = { showDriverStatusDialog = false }
+        )
+    }
+
+    val releaseInfo = updateState.release
+    if (releaseInfo != null) {
+        val noAssetStr = stringResource(R.string.update_no_apk_asset)
+        val appVersionName = remember(context) {
             try {
                 context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: ""
             } catch (_: Exception) {
                 ""
             }
         }
-
-    val clearAllProgressStr = stringResource(R.string.preset_clear_all_progress)
-    val clearedStr = stringResource(R.string.preset_cleared)
-
-    if (showExcludedAppsDialog) {
-        ExcludedAppsDialog(
-            excludedApps = excludedApps,
-            onToggle = viewModel::setAppExcluded,
-            loadInstalledApps = viewModel::loadInstalledApps,
-            onDismiss = { showExcludedAppsDialog = false },
-        )
-    }
-
-    if (showPresetDialog) {
-        PresetDialog(
-            presets = presets,
-            onSave = viewModel::savePreset,
-            onLoad = { id ->
-                viewModel.loadPreset(id)
-                showPresetDialog = false
-            },
-            onDelete = viewModel::deletePreset,
-            onRename = viewModel::renamePreset,
-            onUpdate = viewModel::updatePreset,
-            onClearAll = {
-                viewModel.clearAllPresets(
-                    notificationTitle = clearAllProgressStr,
-                    successStr = clearedStr,
-                ) { count ->
-                    Toast.makeText(context, "$clearedStr: $count", Toast.LENGTH_SHORT).show()
-                }
-            },
-            onDismiss = { showPresetDialog = false },
-        )
-    }
-
-    if (showDriverStatusDialog) {
-        LaunchedEffect(Unit) {
-            while (true) {
-                viewModel.queryDriverStatus()
-                delay(500.milliseconds)
-            }
-        }
-        DriverStatusDialog(
-            driverStatus = driverStatus,
-            onDismiss = { showDriverStatusDialog = false },
-        )
-    }
-
-    if (showDebugLog) {
-        DebugLogDialog(
-            onDisableDebug = {
-                viewModel.disableDebugMode()
-                showDebugLog = false
-            },
-            onDismiss = { showDebugLog = false },
-        )
-    }
-
-    if (showDeviceDialog) {
-        DeviceDialog(
-            devices = deviceSettings,
-            activeDeviceId = state.activeDeviceId,
-            onRename = viewModel::renameDevice,
-            onLoad = viewModel::loadDevicePreset,
-            onUpdate = viewModel::saveDevicePreset,
-            onDelete = viewModel::deleteDeviceSettings,
-            onDismiss = { showDeviceDialog = false },
-        )
-    }
-
-    val importSuccessStr = stringResource(R.string.import_success)
-    val importFailedStr = stringResource(R.string.import_failed)
-    val importPresetStr = stringResource(R.string.settings_import_preset)
-    val importPresetLauncher =
-        rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.OpenMultipleDocuments(),
-        ) { uris ->
-            if (uris.isNotEmpty()) {
-                viewModel.importPresetFiles(uris, notificationTitle = importPresetStr, successStr = importSuccessStr) { success ->
-                    val msg = if (success) importSuccessStr else importFailedStr
-                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-
-    val importKernelStr = stringResource(R.string.settings_import_kernel)
-    val importKernelLauncher =
-        rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.OpenMultipleDocuments(),
-        ) { uris ->
-            if (uris.isNotEmpty()) {
-                viewModel.importKernels(uris, notificationTitle = importKernelStr, successStr = importSuccessStr) { success ->
-                    val msg = if (success) importSuccessStr else importFailedStr
-                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-
-    val importVdcStr = stringResource(R.string.settings_import_vdc)
-    val importVdcLauncher =
-        rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.OpenMultipleDocuments(),
-        ) { uris ->
-            if (uris.isNotEmpty()) {
-                viewModel.importVdcs(uris, notificationTitle = importVdcStr, successStr = importSuccessStr) { success ->
-                    val msg = if (success) importSuccessStr else importFailedStr
-                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-
-    if (showSettingsDialog) {
-        LaunchedEffect(Unit) { viewModel.queryDriverStatus() }
-        SettingsDialog(
-            autoStartEnabled = autoStart,
-            globalModeEnabled = globalMode,
-            aidlModeActive = aidlMode,
-            debugModeEnabled = debugMode,
-            onGlobalModeChanged = viewModel::toggleGlobalMode,
-            onOpenExcludedApps = { showExcludedAppsDialog = true },
-            driverStatus = driverStatus,
-            appVersionName = appVersionName,
-            onAutoStartChanged = viewModel::toggleAutoStart,
-            onImportPreset = { importPresetLauncher.launch(arrayOf("application/json")) },
-            onImportKernel = {
-                importKernelLauncher.launch(
-                    arrayOf(
-                        "audio/*",
-                        "application/octet-stream",
-                        "*/*",
-                    ),
-                )
-            },
-            onDebugUnlocked = viewModel::enableDebugMode,
-            onImportVdc = { importVdcLauncher.launch(arrayOf("*/*")) },
-            onCheckUpdate = { viewModel.checkForUpdate() },
-            onDismiss = { showSettingsDialog = false },
-        )
-    }
-
-    val updateCheckingStr = stringResource(R.string.update_checking)
-    val updateNoApkStr = stringResource(R.string.update_no_apk_asset)
-    val updateCheckFailedFmt = stringResource(R.string.update_check_failed)
-    LaunchedEffect(updateState.checking) {
-        if (updateState.checking) {
-            Toast.makeText(context, updateCheckingStr, Toast.LENGTH_SHORT).show()
-        }
-    }
-    LaunchedEffect(updateState.error) {
-        val err = updateState.error
-        if (err != null) {
-            Toast.makeText(context, updateCheckFailedFmt.format(err), Toast.LENGTH_LONG).show()
-            viewModel.dismissUpdate()
-        }
-    }
-    updateState.release?.let { release ->
         UpdateDialog(
-            release = release,
+            release = releaseInfo,
             currentVersion = appVersionName,
             upToDate = updateState.upToDate,
             downloading = updateState.downloading,
             downloadProgress = updateState.downloadProgress,
             onDownloadInstall = {
-                viewModel.downloadAndInstall(release) {
-                    Toast.makeText(context, updateNoApkStr, Toast.LENGTH_SHORT).show()
-                }
+                viewModel.downloadAndInstall(
+                    release = releaseInfo,
+                    onNoAsset = { platform.showToast(noAssetStr) }
+                )
             },
             onViewOnGithub = {
-                context.startActivity(Intent(Intent.ACTION_VIEW, release.htmlUrl.toUri()))
+                val intent = Intent(Intent.ACTION_VIEW, releaseInfo.htmlUrl.toUri())
+                context.startActivity(intent)
+                viewModel.dismissUpdate()
             },
-            onDismiss = { viewModel.dismissUpdate() },
+            onDismiss = { viewModel.dismissUpdate() }
         )
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(stringResource(R.string.app_name))
-                        val deviceName = state.activeDeviceName
-                        if (deviceName.isNotEmpty()) {
-                            val dotColor =
-                                if (state.masterEnable) {
-                                    status_active_green
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                }
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Canvas(modifier = Modifier.size(UiDimens.Small)) {
-                                    drawCircle(dotColor)
-                                }
-                                Spacer(modifier = Modifier.width(UiDimens.Small))
-                                Text(
-                                    text = deviceName,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                )
-                            }
-                        }
-                    }
-                },
-                colors =
-                    TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        actionIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    ),
-                actions = {
-                    if (debugMode) {
-                        IconButton(onClick = { showDebugLog = true }) {
-                            Icon(
-                                Icons.Default.BugReport,
-                                contentDescription = stringResource(R.string.debug_log_title),
-                            )
-                        }
-                    }
-                    IconButton(onClick = { showDeviceDialog = true }) {
-                        Icon(
-                            Icons.Filled.SpeakerGroup,
-                            contentDescription = stringResource(R.string.menu_devices),
-                        )
-                    }
-                    IconButton(onClick = { showDriverStatusDialog = true }) {
-                        Icon(
-                            Icons.Default.Info,
-                            contentDescription = stringResource(R.string.menu_driver_status),
-                        )
-                    }
-                    IconButton(onClick = { showPresetDialog = true }) {
-                        Icon(
-                            Icons.Default.LibraryMusic,
-                            contentDescription = stringResource(R.string.menu_presets),
-                        )
-                    }
-                    IconButton(onClick = { showSettingsDialog = true }) {
-                        Icon(
-                            Icons.Default.Settings,
-                            contentDescription = stringResource(R.string.menu_settings),
-                        )
-                    }
-                },
-            )
-        },
-        floatingActionButton = {
-            val masterOn = state.masterEnable
-            val darkTheme = isSystemInDarkTheme()
-            val containerColor =
-                when {
-                    !masterOn -> MaterialTheme.colorScheme.errorContainer
-                    darkTheme -> master_on_container_dark
-                    else -> master_on_container_light
-                }
-            val onContainerColor =
-                when {
-                    !masterOn -> MaterialTheme.colorScheme.onErrorContainer
-                    darkTheme -> master_on_onContainer_dark
-                    else -> master_on_onContainer_light
-                }
-            FloatingActionButton(
-                onClick = { viewModel.setMasterEnabled(!masterOn) },
-                shape = MaterialTheme.shapes.large,
-                containerColor = containerColor,
-                contentColor = onContainerColor,
-            ) {
-                Icon(
-                    imageVector = Icons.Default.PowerSettingsNew,
-                    contentDescription = stringResource(R.string.master_enable),
-                )
-            }
-        },
-        floatingActionButtonPosition = FabPosition.End,
-    ) { paddingValues ->
-        EffectList(
-            state = state,
-            viewModel = viewModel,
-            modifier = Modifier.padding(paddingValues),
-        )
+    val updateError = updateState.error
+    if (updateError != null) {
+        val errorMsg = stringResource(R.string.update_check_failed, updateError)
+        LaunchedEffect(updateError) {
+            platform.showToast(errorMsg)
+            viewModel.dismissUpdate()
+        }
     }
 }
 
 @Composable
-private fun EffectList(
+private fun OverviewTab(
+    state: EffectState,
+    driverStatus: DriverStatus,
+    aidlMode: Boolean,
+    globalMode: Boolean,
+    viewModel: MainViewModel,
+    bottomPadding: Dp,
+    onJumpToEffects: () -> Unit,
+    onShowDriverDialog: () -> Unit,
+    onOpenDevices: () -> Unit,
+) {
+    val scrollBehavior = MiuixScrollBehavior()
+    val backdrop = rememberBlurBackdrop()
+    val blurActive = backdrop != null
+    val barColor = if (blurActive) Color.Transparent else MiuixTheme.colorScheme.surface
+
+    val isSpeaker = state.activeDeviceId == AudioDevice.ID_SPEAKER
+    val enabledEffects = remember(state) { collectEnabledEffects(state) }
+
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        topBar = {
+            BlurredBar(backdrop = backdrop, blurActive = blurActive) {
+                AdaptiveTopAppBar(
+                    title = stringResource(R.string.app_name),
+                    scrollBehavior = scrollBehavior,
+                    color = barColor
+                )
+            }
+        }
+    ) { innerPadding ->
+        WideContentBox { sidePadding ->
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)
+                    .scrollEndHaptic()
+                    .overScrollVertical()
+                    .nestedScroll(scrollBehavior.nestedScrollConnection),
+                contentPadding = PaddingValues(
+                    top = innerPadding.calculateTopPadding(),
+                    bottom = bottomPadding,
+                    start = sidePadding,
+                    end = sidePadding
+                )
+            ) {
+                item(key = "overview_top_spacer") {
+                    Spacer(Modifier.height(12.dp))
+                }
+
+                item(key = "overview_driver_hero") {
+                    DriverStatusCard(
+                        driverStatus = driverStatus,
+                        masterEnabled = state.masterEnable,
+                        aidlMode = aidlMode,
+                        globalMode = globalMode,
+                        onClick = onShowDriverDialog,
+                        modifier = Modifier
+                            .padding(horizontal = 12.dp)
+                            .padding(bottom = 12.dp)
+                    )
+                }
+
+                groupedCardItems(
+                    keyPrefix = "overview_master",
+                    outerBottomPadding = 6.dp,
+                    items = listOf(
+                        CardItem("master_switch") {
+                            SwitchPreference(
+                                title = stringResource(R.string.master_enable),
+                                summary = if (state.masterEnable) {
+                                    stringResource(R.string.overview_master_summary_on)
+                                } else {
+                                    stringResource(R.string.overview_master_summary_off)
+                                },
+                                startAction = {
+                                    Icon(
+                                        imageVector = Icons.Rounded.PowerSettingsNew,
+                                        contentDescription = stringResource(R.string.master_enable),
+                                        modifier = Modifier.padding(end = 6.dp),
+                                        tint = MiuixTheme.colorScheme.onBackground
+                                    )
+                                },
+                                checked = state.masterEnable,
+                                onCheckedChange = viewModel::setMasterEnabled
+                            )
+                        },
+                        CardItem("current_device") {
+                            ArrowPreference(
+                                title = stringResource(R.string.overview_current_device),
+                                summary = if (isSpeaker) {
+                                    stringResource(R.string.device_mode_speaker)
+                                } else {
+                                    stringResource(R.string.device_mode_headphone)
+                                },
+                                startAction = {
+                                    Icon(
+                                        imageVector = if (isSpeaker) Icons.Rounded.Speaker else Icons.Rounded.Headphones,
+                                        contentDescription = stringResource(R.string.overview_current_device),
+                                        modifier = Modifier.padding(end = 6.dp),
+                                        tint = MiuixTheme.colorScheme.onBackground
+                                    )
+                                },
+                                endActions = {
+                                    StatusBadge(
+                                        text = state.activeDeviceName.ifEmpty {
+                                            if (isSpeaker) stringResource(R.string.device_type_speaker)
+                                            else stringResource(R.string.device_mode_headphone)
+                                        },
+                                        color = MiuixTheme.colorScheme.primary
+                                    )
+                                },
+                                onClick = onOpenDevices
+                            )
+                        }
+                    )
+                )
+
+                item(key = "overview_active_effects_title") {
+                    SmallTitle(
+                        text = stringResource(
+                            R.string.effects_enabled_count,
+                            enabledEffects.size
+                        )
+                    )
+                }
+
+                if (enabledEffects.isEmpty()) {
+                    groupedCardItems(
+                        keyPrefix = "overview_no_effects",
+                        outerBottomPadding = 12.dp,
+                        items = listOf(
+                            CardItem("empty") {
+                                ArrowPreference(
+                                    title = stringResource(R.string.tab_effects),
+                                    summary = stringResource(R.string.status_inactive),
+                                    startAction = {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Tune,
+                                            contentDescription = stringResource(R.string.tab_effects),
+                                            modifier = Modifier.padding(end = 6.dp),
+                                            tint = MiuixTheme.colorScheme.onBackground
+                                        )
+                                    },
+                                    onClick = onJumpToEffects
+                                )
+                            }
+                        )
+                    )
+                } else {
+                    groupedCardItems(
+                        keyPrefix = "overview_active_effects",
+                        outerBottomPadding = 12.dp,
+                        items = enabledEffects.mapIndexed { index, effect ->
+                            CardItem("active_$index") {
+                                ArrowPreference(
+                                    title = stringResource(effect.titleRes),
+                                    startAction = {
+                                        Icon(
+                                            imageVector = effect.icon,
+                                            contentDescription = stringResource(effect.titleRes),
+                                            modifier = Modifier.padding(end = 6.dp),
+                                            tint = MiuixTheme.colorScheme.onBackground
+                                        )
+                                    },
+                                    endActions = {
+                                        StatusBadge(
+                                            text = stringResource(R.string.status_active),
+                                            color = StatusColors.healthy
+                                        )
+                                    },
+                                    onClick = onJumpToEffects
+                                )
+                            }
+                        }
+                    )
+                }
+
+                item(key = "overview_bottom_spacer") {
+                    Spacer(Modifier.height(12.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EffectsTab(
     state: EffectState,
     viewModel: MainViewModel,
-    modifier: Modifier = Modifier,
+    expandController: EffectExpandController,
+    bottomPadding: Dp,
+    onOpenEqScreen: () -> Unit,
+    onOpenPresets: () -> Unit,
+    onShowDriverDialog: () -> Unit,
+    showDriverStatusDialog: Boolean,
 ) {
-    val targetAlpha = if (state.masterEnable) 1f else 0.38f
-    val alpha by animateFloatAsState(
-        targetValue = targetAlpha,
-        animationSpec = tween(durationMillis = 200),
-        label = "effectListAlpha",
-    )
-    LazyColumn(
-        modifier = modifier.fillMaxSize().graphicsLayer { this.alpha = alpha },
-        contentPadding = PaddingValues(bottom = UiDimens.FabListPadding),
-    ) {
-        item { Spacer(modifier = Modifier.height(UiDimens.Medium)) }
-        item { MasterLimiterRows(state, viewModel) }
-        item { PlaybackGainSection(state, viewModel) }
-        item { LUFSTargetingSection(state, viewModel) }
-        item { MultibandCompressorSection(state, viewModel) }
-        item { FetCompressorSection(state, viewModel) }
-        item { DdcSection(state, viewModel) }
-        item { SpectrumExtensionSection(state, viewModel) }
-        item { EqualizerSection(state, viewModel) }
-        item { DynamicEqSection(state, viewModel) }
-        item { ConvolverSection(state, viewModel) }
-        item { FieldSurroundSection(state, viewModel) }
-        item { DiffSurroundSection(state, viewModel) }
-        item { StereoImagerSection(state, viewModel) }
-        item { HeadphoneSurroundSection(state, viewModel) }
-        item { ReverberationSection(state, viewModel) }
-        item { DynamicSystemSection(state, viewModel) }
-        item { TubeSimulatorSection(state, viewModel) }
-        item { PsychoacousticBassSection(state, viewModel) }
-        item { ViperBassSection(state, viewModel) }
-        item { ViperBassMonoSection(state, viewModel) }
-        item { ViperClaritySection(state, viewModel) }
-        item { AuditoryProtectionSection(state, viewModel) }
-        item { AnalogXSection(state, viewModel) }
-        item { SpeakerOptSection(state, viewModel) }
+    val scrollBehavior = MiuixScrollBehavior()
+    val backdrop = rememberBlurBackdrop()
+    val blurActive = backdrop != null
+    val barColor = if (blurActive) Color.Transparent else MiuixTheme.colorScheme.surface
+    val scope = rememberCoroutineScope()
+    val listState = rememberLazyListState()
+
+    val isSpeaker = state.activeDeviceId == AudioDevice.ID_SPEAKER
+    val allCollapsed = expandController.isAllCollapsed
+
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        topBar = {
+            BlurredBar(backdrop = backdrop, blurActive = blurActive) {
+                AdaptiveTopAppBar(
+                    title = stringResource(R.string.tab_effects),
+                    scrollBehavior = scrollBehavior,
+                    color = barColor,
+                    navigationIcon = {
+                        IconButton(
+                            onClick = onOpenPresets
+                        ) {
+                            Icon(
+                                imageVector = MiuixIcons.ListView,
+                                contentDescription = stringResource(R.string.menu_presets),
+                                tint = MiuixTheme.colorScheme.onSurface
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(
+                            onClick = {
+                                if (allCollapsed) {
+                                    expandController.expandAll(scope)
+                                } else {
+                                    expandController.collapseAll(scope)
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = if (allCollapsed) MiuixIcons.ExpandMore else MiuixIcons.ExpandLess,
+                                contentDescription = if (allCollapsed) {
+                                    stringResource(R.string.common_expand_all)
+                                } else {
+                                    stringResource(R.string.common_collapse_all)
+                                },
+                                tint = MiuixTheme.colorScheme.onSurface
+                            )
+                        }
+                        IconButton(
+                            onClick = onShowDriverDialog,
+                            holdDownState = showDriverStatusDialog
+                        ) {
+                            Icon(
+                                imageVector = MiuixIcons.Info,
+                                contentDescription = stringResource(R.string.menu_driver_status),
+                                tint = MiuixTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                )
+            }
+        }
+    ) { innerPadding ->
+        WideContentBox { sidePadding ->
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)
+                    .scrollEndHaptic()
+                    .overScrollVertical()
+                    .nestedScroll(scrollBehavior.nestedScrollConnection),
+                contentPadding = PaddingValues(
+                    top = innerPadding.calculateTopPadding(),
+                    bottom = bottomPadding,
+                    start = sidePadding,
+                    end = sidePadding
+                )
+            ) {
+                item(key = "effects_top_spacer") {
+                    Spacer(Modifier.height(12.dp))
+                }
+
+                groupedCardItems(
+                    keyPrefix = "effects_master_bar",
+                    outerBottomPadding = 12.dp,
+                    items = listOf(
+                        CardItem("master_switch") {
+                            SwitchPreference(
+                                title = stringResource(R.string.master_enable),
+                                summary = state.activeDeviceName.ifEmpty {
+                                    if (isSpeaker) stringResource(R.string.device_mode_speaker)
+                                    else stringResource(R.string.device_mode_headphone)
+                                },
+                                startAction = {
+                                    Icon(
+                                        imageVector = Icons.Rounded.PowerSettingsNew,
+                                        contentDescription = stringResource(R.string.master_enable),
+                                        modifier = Modifier.padding(end = 6.dp),
+                                        tint = MiuixTheme.colorScheme.onBackground
+                                    )
+                                },
+                                checked = state.masterEnable,
+                                onCheckedChange = viewModel::setMasterEnabled
+                            )
+                        }
+                    )
+                )
+
+                allEffectSectionsItems(
+                    state = state,
+                    viewModel = viewModel,
+                    controller = expandController,
+                    scope = scope,
+                    onOpenEqScreen = onOpenEqScreen
+                )
+
+                item(key = "effects_bottom_spacer") {
+                    Spacer(Modifier.height(12.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsTab(
+    autoStart: Boolean,
+    globalMode: Boolean,
+    debugMode: Boolean,
+    excludedApps: Set<String>,
+    kernelFileCount: Int,
+    vdcFileCount: Int,
+    updateState: UpdateState,
+    viewModel: MainViewModel,
+    bottomPadding: Dp,
+    onOpenExcludedApps: () -> Unit,
+    onOpenKernelFiles: () -> Unit,
+    onOpenVdcFiles: () -> Unit,
+    onOpenDebugLog: () -> Unit,
+) {
+    val scrollBehavior = MiuixScrollBehavior()
+    val backdrop = rememberBlurBackdrop()
+    val blurActive = backdrop != null
+    val barColor = if (blurActive) Color.Transparent else MiuixTheme.colorScheme.surface
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    val isCheckingUpdate = updateState.checking
+    val appVersionName = remember(context) {
+        try {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: ""
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        topBar = {
+            BlurredBar(backdrop = backdrop, blurActive = blurActive) {
+                AdaptiveTopAppBar(
+                    title = stringResource(R.string.menu_settings),
+                    scrollBehavior = scrollBehavior,
+                    color = barColor
+                )
+            }
+        }
+    ) { innerPadding ->
+        WideContentBox { sidePadding ->
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)
+                    .scrollEndHaptic()
+                    .overScrollVertical()
+                    .nestedScroll(scrollBehavior.nestedScrollConnection),
+                contentPadding = PaddingValues(
+                    top = innerPadding.calculateTopPadding(),
+                    bottom = bottomPadding,
+                    start = sidePadding,
+                    end = sidePadding
+                )
+            ) {
+                item(key = "settings_general_title") {
+                    SmallTitle(text = stringResource(R.string.settings_general_section))
+                }
+
+                groupedCardItems(
+                    keyPrefix = "settings_general",
+                    items = buildList {
+                        add(
+                            CardItem("auto_start") {
+                                SwitchPreference(
+                                    title = stringResource(R.string.settings_auto_start),
+                                    summary = stringResource(R.string.settings_auto_start_desc),
+                                    startAction = {
+                                        Icon(
+                                            imageVector = Icons.Rounded.RestartAlt,
+                                            contentDescription = stringResource(R.string.settings_auto_start),
+                                            modifier = Modifier.padding(end = 6.dp),
+                                            tint = MiuixTheme.colorScheme.onBackground
+                                        )
+                                    },
+                                    checked = autoStart,
+                                    onCheckedChange = viewModel::toggleAutoStart
+                                )
+                            }
+                        )
+                        add(
+                            CardItem("global_mode") {
+                                SwitchPreference(
+                                    title = stringResource(R.string.settings_global_mode),
+                                    summary = stringResource(R.string.settings_global_mode_desc),
+                                    startAction = {
+                                        Icon(
+                                            imageVector = Icons.Rounded.AdminPanelSettings,
+                                            contentDescription = stringResource(R.string.settings_global_mode),
+                                            modifier = Modifier.padding(end = 6.dp),
+                                            tint = MiuixTheme.colorScheme.onBackground
+                                        )
+                                    },
+                                    checked = globalMode,
+                                    onCheckedChange = { enabled ->
+                                        if (enabled) {
+                                            scope.launch {
+                                                val granted = withContext(Dispatchers.IO) {
+                                                    RootShell.isRootAvailable()
+                                                }
+                                                if (granted) {
+                                                    viewModel.toggleGlobalMode(true)
+                                                }
+                                            }
+                                        } else {
+                                            viewModel.toggleGlobalMode(false)
+                                        }
+                                    }
+                                )
+                            }
+                        )
+                        if (!globalMode) {
+                            add(
+                                CardItem("session_exclude") {
+                                    ArrowPreference(
+                                        title = stringResource(R.string.settings_excluded_apps),
+                                        summary = stringResource(R.string.settings_excluded_apps_desc),
+                                        startAction = {
+                                            Icon(
+                                                imageVector = Icons.Rounded.LayersClear,
+                                                contentDescription = stringResource(R.string.settings_excluded_apps),
+                                                modifier = Modifier.padding(end = 6.dp),
+                                                tint = MiuixTheme.colorScheme.onBackground
+                                            )
+                                        },
+                                        endActions = {
+                                            if (excludedApps.isNotEmpty()) {
+                                                StatusBadge(
+                                                    text = excludedApps.size.toString(),
+                                                    color = MiuixTheme.colorScheme.primary
+                                                )
+                                            }
+                                        },
+                                        onClick = onOpenExcludedApps
+                                    )
+                                }
+                            )
+                        }
+                        add(
+                            CardItem("debug_mode") {
+                                SwitchPreference(
+                                    title = stringResource(R.string.settings_debug_mode),
+                                    summary = stringResource(R.string.settings_debug_mode_desc),
+                                    startAction = {
+                                        Icon(
+                                            imageVector = Icons.Rounded.BugReport,
+                                            contentDescription = stringResource(R.string.settings_debug_mode),
+                                            modifier = Modifier.padding(end = 6.dp),
+                                            tint = MiuixTheme.colorScheme.onBackground
+                                        )
+                                    },
+                                    checked = debugMode,
+                                    onCheckedChange = { enabled ->
+                                        if (enabled) {
+                                            viewModel.enableDebugMode()
+                                        } else {
+                                            viewModel.disableDebugMode()
+                                        }
+                                    }
+                                )
+                            }
+                        )
+                        if (debugMode) {
+                            add(
+                                CardItem("debug_log") {
+                                    ArrowPreference(
+                                        title = stringResource(R.string.debug_log_title),
+                                        summary = stringResource(R.string.debug_mode_enabled),
+                                        startAction = {
+                                            Icon(
+                                                imageVector = Icons.Rounded.Terminal,
+                                                contentDescription = stringResource(R.string.debug_log_title),
+                                                modifier = Modifier.padding(end = 6.dp),
+                                                tint = MiuixTheme.colorScheme.onBackground
+                                            )
+                                        },
+                                        onClick = onOpenDebugLog
+                                    )
+                                }
+                            )
+                        }
+                    }
+                )
+
+                item(key = "settings_import_title") {
+                    SmallTitle(text = stringResource(R.string.settings_files_section))
+                }
+
+                groupedCardItems(
+                    keyPrefix = "settings_files",
+                    items = listOf(
+                        CardItem("manage_kernels") {
+                            ArrowPreference(
+                                title = stringResource(R.string.files_kernel_title),
+                                summary = stringResource(R.string.settings_import_kernel_desc),
+                                startAction = {
+                                    Icon(
+                                        imageVector = Icons.Rounded.GraphicEq,
+                                        contentDescription = stringResource(R.string.files_kernel_title),
+                                        modifier = Modifier.padding(end = 6.dp),
+                                        tint = MiuixTheme.colorScheme.onBackground
+                                    )
+                                },
+                                endActions = {
+                                    if (kernelFileCount > 0) {
+                                        StatusBadge(
+                                            text = kernelFileCount.toString(),
+                                            color = MiuixTheme.colorScheme.primary
+                                        )
+                                    }
+                                },
+                                onClick = onOpenKernelFiles
+                            )
+                        },
+                        CardItem("manage_vdcs") {
+                            ArrowPreference(
+                                title = stringResource(R.string.files_vdc_title),
+                                summary = stringResource(R.string.settings_import_vdc_desc),
+                                startAction = {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Tune,
+                                        contentDescription = stringResource(R.string.files_vdc_title),
+                                        modifier = Modifier.padding(end = 6.dp),
+                                        tint = MiuixTheme.colorScheme.onBackground
+                                    )
+                                },
+                                endActions = {
+                                    if (vdcFileCount > 0) {
+                                        StatusBadge(
+                                            text = vdcFileCount.toString(),
+                                            color = MiuixTheme.colorScheme.primary
+                                        )
+                                    }
+                                },
+                                onClick = onOpenVdcFiles
+                            )
+                        }
+                    )
+                )
+
+                item(key = "settings_about_title") {
+                    SmallTitle(text = stringResource(R.string.settings_about_section))
+                }
+
+                groupedCardItems(
+                    keyPrefix = "settings_about",
+                    outerBottomPadding = 12.dp,
+                    items = listOf(
+                        CardItem("app_version") {
+                            ArrowPreference(
+                                title = stringResource(R.string.settings_app_version),
+                                startAction = {
+                                    Icon(
+                                        imageVector = MiuixIcons.Info,
+                                        contentDescription = stringResource(R.string.settings_app_version),
+                                        modifier = Modifier.padding(end = 6.dp),
+                                        tint = MiuixTheme.colorScheme.onBackground
+                                    )
+                                },
+                                endActions = {
+                                    Text(
+                                        text = appVersionName,
+                                        fontSize = 14.sp,
+                                        color = MiuixTheme.colorScheme.onSurfaceVariantActions
+                                    )
+                                },
+                                holdDownState = updateState.release != null,
+                                onClick = {
+                                    if (!isCheckingUpdate) {
+                                        viewModel.checkForUpdate()
+                                    }
+                                }
+                            )
+                        }
+                    )
+                )
+
+                item(key = "settings_bottom_spacer") {
+                    Spacer(Modifier.height(12.dp))
+                }
+            }
+        }
+    }
+}
+
+@Immutable
+private data class EnabledEffectItem(
+    val titleRes: Int,
+    val icon: ImageVector,
+)
+
+private fun collectEnabledEffects(state: EffectState): List<EnabledEffectItem> {
+    return buildList {
+        if (state.playbackGainControl.enable) add(EnabledEffectItem(R.string.section_agc, Icons.AutoMirrored.Rounded.TrendingUp))
+        if (state.lufs.enable) add(EnabledEffectItem(R.string.section_lufs_targeting, Icons.Rounded.VerticalAlignCenter))
+        if (state.fetCompressor.enable) add(EnabledEffectItem(R.string.section_fet_compressor, Icons.Rounded.Compress))
+        if (state.multibandCompressor.enable) add(EnabledEffectItem(R.string.section_multiband_compressor, Icons.Rounded.SettingsInputComponent))
+        if (state.ddc.enable) add(EnabledEffectItem(R.string.section_ddc, Icons.Rounded.SpeakerPhone))
+        if (state.spectrumExtension.enable) add(EnabledEffectItem(R.string.section_spectrum_extension, Icons.Rounded.Waves))
+        if (state.eq.enable) add(EnabledEffectItem(R.string.section_equalizer, Icons.Rounded.Equalizer))
+        if (state.dynamicEq.enable) add(EnabledEffectItem(R.string.section_dynamic_eq, Icons.Rounded.Insights))
+        if (state.convolver.enable) add(EnabledEffectItem(R.string.section_convolver, Icons.Rounded.BlurCircular))
+        if (state.fieldSurround.enable) add(EnabledEffectItem(R.string.section_field_surround, Icons.Rounded.SurroundSound))
+        if (state.diffSurround.enable) add(EnabledEffectItem(R.string.section_diff_surround, Icons.Rounded.SpatialAudio))
+        if (state.stereoImager.enable) add(EnabledEffectItem(R.string.section_stereo_imager, Icons.Rounded.AspectRatio))
+        if (state.headphoneSurround.enable) add(EnabledEffectItem(R.string.section_headphone_surround, Icons.Rounded.Headphones))
+        if (state.reverb.enable) add(EnabledEffectItem(R.string.section_reverb, Icons.Rounded.BlurOn))
+        if (state.dynamicSystem.enable) add(EnabledEffectItem(R.string.section_dynamic_system, Icons.Rounded.CandlestickChart))
+        if (state.tubeSimulator.enable) add(EnabledEffectItem(R.string.section_tube_simulator, Icons.Rounded.MusicNote))
+        if (state.psychoacousticBass.enable) add(EnabledEffectItem(R.string.section_psycho_bass, Icons.Rounded.Psychology))
+        if (state.bass.enable) add(EnabledEffectItem(R.string.section_viper_bass, Icons.Rounded.GraphicEq))
+        if (state.bassMono.enable) add(EnabledEffectItem(R.string.section_viper_bass_mono, Icons.Rounded.GraphicEq))
+        if (state.clarity.enable) add(EnabledEffectItem(R.string.section_viper_clarity, Icons.Rounded.Hearing))
+        if (state.cure.enable) add(EnabledEffectItem(R.string.section_cure, Icons.Rounded.HealthAndSafety))
+        if (state.analogX.enable) add(EnabledEffectItem(R.string.section_analogx, Icons.Rounded.Memory))
+        if (state.speakerCorrection.enable) add(EnabledEffectItem(R.string.section_speaker_optimization, Icons.Rounded.SpeakerPhone))
     }
 }
