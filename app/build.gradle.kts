@@ -105,4 +105,5 @@ dependencies {
     implementation(libs.coroutines.android)
 
     implementation(libs.okhttp)
+    implementation(libs.bundles.miuix)
 }

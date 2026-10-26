@@ -1,5 +1,5 @@
 [versions]
-agp = "9.4.0"
+agp = "9.4.1"
 kotlin = "2.4.20"
 ksp = "2.3.11"
 compose-bom = "2026.09.00"
@@ -12,6 +12,7 @@ activity-compose = "1.13.0"
 core-ktx = "1.19.0"
 coroutines = "1.11.0"
 okhttp = "5.5.0"
+miuix = "0.9.4"
 
 [libraries]
 compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "compose-bom" }
@@ -43,6 +44,14 @@ datastore-preferences = { group = "androidx.datastore", name = "datastore-prefer
 coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+miuix-blur = { module = "top.yukonga.miuix.kmp:miuix-blur-android", version.ref = "miuix" }
+miuix-icons = { module = "top.yukonga.miuix.kmp:miuix-icons-android", version.ref = "miuix" }
+miuix-navigation3-ui = { module = "top.yukonga.miuix.kmp:miuix-navigation3-ui-android", version.ref = "miuix" }
+miuix-preference = { module = "top.yukonga.miuix.kmp:miuix-preference-android", version.ref = "miuix" }
+miuix-ui = { module = "top.yukonga.miuix.kmp:miuix-ui-android", version.ref = "miuix" }
+
+[bundles]
+miuix = ["miuix-blur", "miuix-icons", "miuix-navigation3-ui", "miuix-preference", "miuix-ui"]
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
