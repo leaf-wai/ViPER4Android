@@ -10,6 +10,7 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.IBinder
+import androidx.compose.runtime.Immutable
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -73,6 +74,7 @@ import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import kotlin.time.Duration.Companion.milliseconds
 
+@Immutable
 data class DriverStatus(
     val installed: Boolean = false,
     val versionCode: Int = -1,
@@ -82,6 +84,7 @@ data class DriverStatus(
     val samplingRate: Int = 0,
 )
 
+@Immutable
 data class UpdateState(
     val checking: Boolean = false,
     val downloading: Boolean = false,
@@ -91,6 +94,7 @@ data class UpdateState(
     val error: String? = null,
 )
 
+@Immutable
 data class InstalledAppInfo(
     val packageName: String,
     val label: String,

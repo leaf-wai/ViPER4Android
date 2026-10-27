@@ -1,5 +1,7 @@
 package com.llsl.viper4android.ui.screens.debug
 
+import androidx.compose.runtime.Immutable
+
 internal enum class LogSource {
     APP,
     DRIVER,
@@ -13,6 +15,7 @@ internal enum class LogLevel {
     UNKNOWN,
 }
 
+@Immutable
 internal data class LogEntry(
     val source: LogSource,
     val level: LogLevel,

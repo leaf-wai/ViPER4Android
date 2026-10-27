@@ -1,21 +1,9 @@
 package com.llsl.viper4android.ui.components
 
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.ripple
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -24,9 +12,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import com.llsl.viper4android.R
+import com.llsl.viper4android.ui.theme.StatusColors
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Delete
+import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun LabeledDropdown(
     label: String,
@@ -38,65 +33,45 @@ fun LabeledDropdown(
     onDeleteOption: ((Int, String) -> Unit)? = null,
     isOptionDeletable: (Int, String) -> Boolean = { _, _ -> onDeleteOption != null },
 ) {
-    var expanded by remember { mutableStateOf(false) }
     var deleteTarget by remember { mutableStateOf<Pair<Int, String>?>(null) }
+    val selectedIndex = remember(options, selectedValue) {
+        options.indexOf(selectedValue).coerceAtLeast(0)
+    }
+    val canDeleteCurrent = enabled &&
+        onDeleteOption != null &&
+        selectedIndex in options.indices &&
+        isOptionDeletable(selectedIndex, options[selectedIndex])
 
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { if (enabled) expanded = it },
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(vertical = UiDimens.XSmall),
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        OutlinedTextField(
-            value = selectedValue,
-            onValueChange = {},
-            readOnly = true,
-            label = { Text(label, style = MaterialTheme.typography.bodySmall) },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier =
-                Modifier
-                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
-                    .fillMaxWidth(),
-            enabled = enabled,
-            singleLine = true,
-        )
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-        ) {
-            options.forEachIndexed { index, option ->
-                val canDelete = onDeleteOption != null && isOptionDeletable(index, option)
-                if (canDelete) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = UiDimens.SwitchSlotHeight)
-                                .combinedClickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = ripple(),
-                                    onClick = {
-                                        onOptionSelected(index, option)
-                                        expanded = false
-                                    },
-                                    onLongClick = {
-                                        deleteTarget = index to option
-                                        expanded = false
-                                    },
-                                ).padding(horizontal = UiDimens.Standard),
-                        contentAlignment = Alignment.CenterStart,
-                    ) { Text(option, style = MaterialTheme.typography.bodyLarge) }
-                } else {
-                    DropdownMenuItem(
-                        text = { Text(option) },
-                        onClick = {
-                            onOptionSelected(index, option)
-                            expanded = false
-                        },
-                    )
+        OverlayDropdownPreference(
+            items = options,
+            selectedIndex = selectedIndex,
+            title = label,
+            modifier = Modifier.weight(1f),
+            enabled = enabled && options.isNotEmpty(),
+            onSelectedIndexChange = { index ->
+                if (index in options.indices) {
+                    onOptionSelected(index, options[index])
                 }
+            },
+        )
+        if (canDeleteCurrent) {
+            IconButton(
+                onClick = { deleteTarget = selectedIndex to options[selectedIndex] },
+                modifier = Modifier.padding(end = 12.dp),
+                minHeight = 35.dp,
+                minWidth = 35.dp,
+                backgroundColor = MiuixTheme.colorScheme.secondaryContainer,
+            ) {
+                Icon(
+                    imageVector = MiuixIcons.Delete,
+                    contentDescription = stringResource(R.string.action_delete),
+                    tint = StatusColors.danger,
+                    modifier = Modifier.size(18.dp),
+                )
             }
         }
     }

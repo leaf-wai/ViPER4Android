@@ -1,34 +1,22 @@
 package com.llsl.viper4android.ui.components
 
-import android.graphics.Color.argb
 import android.graphics.Paint
 import android.graphics.Typeface
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.RestartAlt
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -38,18 +26,27 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import com.llsl.viper4android.R
 import com.llsl.viper4android.data.model.EqPreset
 import com.llsl.viper4android.effect.BuiltinPresets
+import com.llsl.viper4android.ui.theme.StatusColors
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
+import top.yukonga.miuix.kmp.basic.Slider
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.squircle.squircleSurface
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.window.WindowDialog
 import java.util.Locale
 import kotlin.math.max
 import kotlin.math.min
@@ -66,9 +63,10 @@ fun EqCurveGraph(
     bandCount: Int = 10,
 ) {
     val freqLabels = BuiltinPresets.eqGraphLabelsForCount(bandCount)
-    val primary = MaterialTheme.colorScheme.primary
-    val surfaceDark = MaterialTheme.colorScheme.surfaceContainerHighest
-    val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+    val primary = MiuixTheme.colorScheme.primary
+    val surfaceColor = MiuixTheme.colorScheme.secondaryContainer
+    val onSurfaceVariant = MiuixTheme.colorScheme.onSurfaceVariantSummary
+    val dividerColor = MiuixTheme.colorScheme.dividerLine
     val density = LocalDensity.current
 
     val graphModifier =
@@ -80,15 +78,13 @@ fun EqCurveGraph(
             modifier.fillMaxWidth()
         }
 
-    Surface(
-        modifier =
-            graphModifier
-                .clip(RoundedCornerShape(UiDimens.Large))
-                .clickable { onClick() },
-        color = surfaceDark,
-        shape = RoundedCornerShape(UiDimens.Large),
+    Box(
+        modifier = graphModifier
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .squircleSurface(color = surfaceColor, cornerRadius = 16.dp)
+            .clickable { onClick() },
     ) {
-        Canvas(modifier = Modifier.fillMaxWidth()) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
             val paddingLeft = UiDimens.ChipHeight.toPx()
             val paddingRight = UiDimens.Standard.toPx()
             val paddingTop = UiDimens.IconLarge.toPx()
@@ -99,14 +95,14 @@ fun EqCurveGraph(
 
             val gridPaint =
                 Paint().apply {
-                    color = argb(25, 255, 255, 255)
+                    color = dividerColor.toArgb()
                     strokeWidth = 1f
                     style = Paint.Style.STROKE
                 }
 
             val freqTextPaint =
                 Paint().apply {
-                    color = onSurfaceVariant.hashCode()
+                    color = onSurfaceVariant.toArgb()
                     textSize =
                         with(density) {
                             (if (bandCount > 15) UiDimens.GraphLabelSmall else UiDimens.GraphLabel).toPx()
@@ -118,7 +114,7 @@ fun EqCurveGraph(
 
             val dbLabelPaint =
                 Paint().apply {
-                    color = argb(120, 255, 255, 255)
+                    color = onSurfaceVariant.toArgb()
                     textSize = with(density) { UiDimens.Medium.toPx() }
                     textAlign = Paint.Align.RIGHT
                     isAntiAlias = true
@@ -127,7 +123,7 @@ fun EqCurveGraph(
 
             val valuePaint =
                 Paint().apply {
-                    color = primary.hashCode()
+                    color = primary.toArgb()
                     textSize = with(density) { UiDimens.Medium.toPx() }
                     textAlign = Paint.Align.CENTER
                     isAntiAlias = true
@@ -290,6 +286,8 @@ fun EqEditDialog(
     onPresetDelete: (Long) -> Unit,
     onReset: () -> Unit,
     onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    show: Boolean = true,
     bandCount: Int = 10,
 ) {
     val localBands =
@@ -308,16 +306,18 @@ fun EqEditDialog(
     var showSaveDialog by remember { mutableStateOf(false) }
     var deletePresetId by remember { mutableStateOf<Long?>(null) }
 
-    AlertDialog(
+    WindowDialog(
+        show = show,
+        modifier = modifier,
+        title = stringResource(R.string.section_equalizer),
         onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = stringResource(R.string.section_equalizer),
-                style = MaterialTheme.typography.titleMedium,
-            )
-        },
-        text = {
-            Column {
+    ) {
+        Column(modifier = Modifier.heightIn(max = 500.dp)) {
+            Column(
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState()),
+            ) {
                 EqCurveGraph(
                     bands = localBands.toList(),
                     onClick = {},
@@ -325,7 +325,7 @@ fun EqEditDialog(
                     bandCount = bandCount,
                 )
 
-                Spacer(modifier = Modifier.height(UiDimens.Large))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 val presetNames = presets.map { resolvePresetName(it) }
                 val selectedPresetName =
@@ -339,128 +339,116 @@ fun EqEditDialog(
                     onOptionSelected = { index, _ -> onPresetSelect(presets[index].id) },
                 )
 
-                Spacer(modifier = Modifier.height(UiDimens.XSmall))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(UiDimens.Medium),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    TextButton(onClick = { showSaveDialog = true }) {
-                        Icon(
-                            Icons.Default.Add,
-                            contentDescription = null,
-                            modifier = Modifier.size(UiDimens.Standard),
-                        )
-                        Spacer(modifier = Modifier.width(UiDimens.XSmall))
-                        Text(stringResource(R.string.action_save))
-                    }
                     TextButton(
+                        text = stringResource(R.string.action_save),
+                        onClick = { showSaveDialog = true },
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(
+                        text = stringResource(R.string.action_delete),
                         onClick = { deletePresetId = presetId },
                         enabled = presetId != null,
-                    ) {
-                        Icon(
-                            Icons.Default.Delete,
-                            contentDescription = null,
-                            modifier = Modifier.size(UiDimens.Standard),
-                        )
-                        Spacer(modifier = Modifier.width(UiDimens.XSmall))
-                        Text(stringResource(R.string.action_delete))
-                    }
-                    TextButton(onClick = {
-                        for (i in localBands.indices) {
-                            localBands[i] = 0f
-                        }
-                        onReset()
-                    }) {
-                        Icon(
-                            Icons.Default.RestartAlt,
-                            contentDescription = null,
-                            modifier = Modifier.size(UiDimens.Standard),
-                        )
-                        Spacer(modifier = Modifier.width(UiDimens.XSmall))
-                        Text(stringResource(R.string.action_reset))
-                    }
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.textButtonColors(
+                            color = StatusColors.danger.copy(alpha = 0.15f),
+                            textColor = StatusColors.danger,
+                        ),
+                    )
+                    TextButton(
+                        text = stringResource(R.string.action_reset),
+                        onClick = {
+                            for (i in localBands.indices) {
+                                localBands[i] = 0f
+                            }
+                            onReset()
+                        },
+                        modifier = Modifier.weight(1f),
+                    )
                 }
 
-                Spacer(modifier = Modifier.height(UiDimens.Medium))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 val bandLabels = BuiltinPresets.eqBandLabelsForCount(bandCount)
+                bandLabels.forEachIndexed { index, label ->
+                    if (index < localBands.size) {
+                        var showBandEdit by remember { mutableStateOf(false) }
 
-                Column(
-                    modifier = Modifier.heightIn(max = UiDimens.EqBandListMaxHeight).verticalScroll(rememberScrollState()),
-                ) {
-                    bandLabels.forEachIndexed { index, label ->
-                        if (index < localBands.size) {
-                            var showBandEdit by remember { mutableStateOf(false) }
+                        val applyBandChange = { newVal: Float ->
+                            localBands[index] = newVal.coerceIn(DB_MIN, DB_MAX)
+                            val list =
+                                localBands.map { String.format(Locale.US, "%.1f", it).toDouble() }
+                            onBandsChange(list)
+                        }
 
-                            val applyBandChange = { newVal: Float ->
-                                localBands[index] = newVal.coerceIn(DB_MIN, DB_MAX)
-                                val list =
-                                    localBands.map { String.format(Locale.US, "%.1f", it).toDouble() }
-                                onBandsChange(list)
-                            }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(UiDimens.ListRowHeight),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = label,
+                                style = MiuixTheme.textStyles.body2,
+                                color = MiuixTheme.colorScheme.onSurface,
+                                modifier = Modifier.width(UiDimens.SwitchSlotHeight),
+                            )
+                            Slider(
+                                value = localBands[index],
+                                onValueChange = { applyBandChange(it) },
+                                valueRange = DB_MIN..DB_MAX,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = "${"%.1f".format(localBands[index])}dB",
+                                style = MiuixTheme.textStyles.body2,
+                                color = MiuixTheme.colorScheme.primary,
+                                modifier = Modifier
+                                    .width(UiDimens.ValueColumnWidth)
+                                    .clickable { showBandEdit = true },
+                                maxLines = 1,
+                            )
+                        }
 
-                            Row(
-                                modifier = Modifier.fillMaxWidth().height(UiDimens.ListRowHeight),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    text = label,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    modifier = Modifier.width(UiDimens.SwitchSlotHeight),
-                                )
-                                Slider(
-                                    value = localBands[index],
-                                    onValueChange = { applyBandChange(it) },
-                                    valueRange = DB_MIN..DB_MAX,
-                                    modifier = Modifier.weight(1f),
-                                    colors =
-                                        SliderDefaults.colors(
-                                            activeTickColor = Color.Transparent,
-                                            inactiveTickColor = Color.Transparent,
-                                        ),
-                                )
-                                Spacer(modifier = Modifier.width(UiDimens.Large))
-                                Text(
-                                    text = "${"%.1f".format(localBands[index])}dB",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.width(UiDimens.ValueColumnWidth).clickable { showBandEdit = true },
-                                    maxLines = 1,
-                                )
-                            }
-
-                            if (showBandEdit) {
-                                NumberInputDialog(
-                                    label = label,
-                                    edit =
-                                        SliderEdit(
-                                            displayValue = localBands[index].toDouble(),
-                                            displayRange = DB_MIN.toDouble()..DB_MAX.toDouble(),
-                                            decimals = 1,
-                                            unit = "dB",
-                                            onCommit = { applyBandChange(it.toFloat()) },
-                                        ),
-                                    onDismiss = { showBandEdit = false },
-                                )
-                            }
+                        if (showBandEdit) {
+                            NumberInputDialog(
+                                label = label,
+                                edit = SliderEdit(
+                                    displayValue = localBands[index].toDouble(),
+                                    displayRange = DB_MIN.toDouble()..DB_MAX.toDouble(),
+                                    decimals = 1,
+                                    unit = "dB",
+                                    defaultValue = 0.0,
+                                    onCommit = { applyBandChange(it.toFloat()) },
+                                ),
+                                onDismiss = { showBandEdit = false },
+                            )
                         }
                     }
                 }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(android.R.string.ok))
-            }
-        },
-    )
+
+            Spacer(modifier = Modifier.height(16.dp))
+            TextButton(
+                text = stringResource(R.string.common_confirm),
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.textButtonColorsPrimary(),
+            )
+        }
+    }
 
     if (showSaveDialog) {
         InputDialog(
             title = stringResource(R.string.preset_save_title),
             initialValue = "",
-            confirmLabel = stringResource(android.R.string.ok),
+            confirmLabel = stringResource(R.string.common_confirm),
             onConfirm = { name ->
                 onPresetAdd(name)
                 showSaveDialog = false

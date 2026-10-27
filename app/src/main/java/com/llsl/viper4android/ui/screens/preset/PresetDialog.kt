@@ -1,24 +1,17 @@
 package com.llsl.viper4android.ui.screens.preset
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.SettingsBackupRestore
 import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -29,7 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.unit.dp
 import com.llsl.viper4android.R
 import com.llsl.viper4android.data.model.Preset
 import com.llsl.viper4android.ui.components.ConfirmDialog
@@ -43,6 +36,18 @@ import com.llsl.viper4android.ui.components.InfoRow
 import com.llsl.viper4android.ui.components.InputDialog
 import com.llsl.viper4android.ui.components.NavRow
 import com.llsl.viper4android.ui.components.RowDivider
+import com.llsl.viper4android.ui.theme.StatusColors
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.Delete
+import top.yukonga.miuix.kmp.icon.extended.Edit
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.window.WindowDialog
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -57,6 +62,7 @@ fun PresetDialog(
     onUpdate: (Long) -> Unit,
     onClearAll: () -> Unit,
     onDismiss: () -> Unit,
+    show: Boolean = true,
 ) {
     var showSaveInput by remember { mutableStateOf(false) }
     var renamingId by remember { mutableLongStateOf(-1L) }
@@ -153,54 +159,58 @@ fun PresetDialog(
         )
     }
 
-    AlertDialog(
-        modifier = Modifier.fillMaxWidth(0.9f),
-        properties = DialogProperties(usePlatformDefaultWidth = false),
+    WindowDialog(
+        title = if (selectedPreset == null) stringResource(R.string.menu_presets) else null,
+        show = show,
         onDismissRequest = onDismiss,
-        title = {
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 500.dp),
+        ) {
             if (selectedPreset != null) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    IconButton(onClick = { selectedPresetId = -1L }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                    IconButton(
+                        onClick = { selectedPresetId = -1L },
+                        minHeight = 35.dp,
+                        minWidth = 35.dp,
+                        backgroundColor = MiuixTheme.colorScheme.secondaryContainer,
+                    ) {
+                        Icon(
+                            imageVector = MiuixIcons.Back,
+                            contentDescription = null,
+                        )
                     }
                     Text(
                         text = selectedPreset.name,
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = MiuixTheme.textStyles.title3,
+                        color = MiuixTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    IconButton(onClick = {
-                        renameInitialName = selectedPreset.name
-                        renamingId = selectedPreset.id
-                    }) {
+                    IconButton(
+                        onClick = {
+                            renameInitialName = selectedPreset.name
+                            renamingId = selectedPreset.id
+                        },
+                        minHeight = 35.dp,
+                        minWidth = 35.dp,
+                        backgroundColor = MiuixTheme.colorScheme.secondaryContainer,
+                    ) {
                         Icon(
-                            Icons.Default.Edit,
+                            imageVector = MiuixIcons.Edit,
                             contentDescription = stringResource(R.string.action_rename),
                         )
                     }
                 }
-            } else {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(stringResource(R.string.menu_presets))
-                    IconButton(onClick = onDismiss) {
-                        Icon(
-                            Icons.Default.Close,
-                            contentDescription = stringResource(R.string.action_close),
-                        )
-                    }
-                }
-            }
-        },
-        text = {
-            if (selectedPreset != null) {
                 PresetDetailView(
                     preset = selectedPreset,
                     onLoad = { loadTarget = selectedPreset },
@@ -208,48 +218,43 @@ fun PresetDialog(
                     onDelete = { deleteTarget = selectedPreset },
                 )
             } else {
-                if (presets.isEmpty()) {
-                    DialogEmptyState(text = stringResource(R.string.preset_empty))
-                } else {
-                    DialogListCard {
-                        items(presets, key = { it.id }) { preset ->
-                            PresetRow(
-                                preset = preset,
-                                onSelect = { selectedPresetId = preset.id },
-                            )
-                            if (preset.id != presets.last().id) {
-                                RowDivider()
+                Column(
+                    modifier = Modifier.weight(1f, fill = false),
+                ) {
+                    if (presets.isEmpty()) {
+                        DialogEmptyState(text = stringResource(R.string.preset_empty))
+                    } else {
+                        DialogListCard {
+                            items(presets, key = { it.id }) { preset ->
+                                PresetRow(
+                                    preset = preset,
+                                    onSelect = { selectedPresetId = preset.id },
+                                )
+                                if (preset.id != presets.last().id) {
+                                    RowDivider()
+                                }
                             }
                         }
                     }
                 }
-            }
-        },
-        confirmButton = {
-            if (selectedPreset == null) {
+                Spacer(modifier = Modifier.height(16.dp))
                 DialogButtonRow {
-                    OutlinedButton(
+                    TextButton(
+                        text = stringResource(R.string.preset_clear_all),
                         onClick = { showClearAllConfirm = true },
                         modifier = Modifier.weight(1f),
                         enabled = presets.isNotEmpty(),
-                        colors =
-                            ButtonDefaults.outlinedButtonColors(
-                                contentColor = MaterialTheme.colorScheme.error,
-                            ),
-                    ) {
-                        Text(stringResource(R.string.preset_clear_all))
-                    }
-                    Button(
+                    )
+                    TextButton(
+                        text = stringResource(R.string.preset_save_current),
                         onClick = { showSaveInput = true },
                         modifier = Modifier.weight(1f),
-                    ) {
-                        Text(stringResource(R.string.preset_save_current))
-                    }
+                        colors = ButtonDefaults.textButtonColorsPrimary(),
+                    )
                 }
             }
-        },
-        dismissButton = {},
-    )
+        }
+    }
 }
 
 @Composable
@@ -296,10 +301,10 @@ private fun PresetDetailView(
                 onClick = onUpdate,
             )
             IconActionItem(
-                icon = Icons.Default.Delete,
+                icon = MiuixIcons.Delete,
                 label = stringResource(R.string.action_delete),
                 onClick = onDelete,
-                tint = MaterialTheme.colorScheme.error,
+                tint = StatusColors.danger,
             )
         }
     }

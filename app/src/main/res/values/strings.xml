@@ -352,4 +352,45 @@
     <string name="ds_device_high_end_headphone_v1">High-End Headphone (v1)</string>
     <string name="ds_device_common_headphone_v1">Common Headphone (v1)</string>
     <string name="ds_device_common_earphone_v1">Common Earphone (v1)</string>
+
+    <!-- Navigation Tabs -->
+    <string name="tab_overview">Overview</string>
+    <string name="tab_effects">Effects</string>
+    <string name="tab_preset_device">Presets</string>
+    <string name="tab_settings">Settings</string>
+
+    <!-- Common MIUIX Dialog & Action -->
+    <string name="common_not_modified">Not Modified</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="common_confirm">Confirm</string>
+    <string name="common_collapse_all">Collapse All</string>
+    <string name="common_expand_all">Expand All</string>
+    <string name="common_refresh">Refresh</string>
+
+    <!-- Overview Tab -->
+    <string name="overview_master_control">Master Control</string>
+    <string name="overview_master_summary_on">Audio processing enabled</string>
+    <string name="overview_master_summary_off">Audio processing disabled</string>
+    <string name="overview_current_device">Active Device</string>
+    <string name="overview_driver_section">Driver Status</string>
+    <string name="overview_mode_root">ROOT</string>
+    <string name="overview_mode_global">GLOBAL</string>
+    <string name="overview_mode_session">SESSION</string>
+
+    <!-- Effects Tab -->
+    <string name="effects_enabled_count">%1$d enabled</string>
+    <string name="effects_tap_to_edit_eq">Tap graph to open full Equalizer editor</string>
+    <string name="effects_add_band">Add Band</string>
+    <string name="effects_band_title">Band %1$d</string>
+
+    <!-- Preset & Device Tab -->
+    <string name="preset_section_title">Saved Presets</string>
+    <string name="device_section_title">Audio Devices</string>
+    <string name="preset_loaded_toast">Loaded preset: %1$s</string>
+    <string name="preset_saved_toast">Saved preset: %1$s</string>
+    <string name="preset_deleted_toast">Deleted preset: %1$s</string>
+    <string name="device_preset_loaded_toast">Loaded device preset: %1$s</string>
+    <string name="device_preset_updated_toast">Updated device preset: %1$s</string>
+    <string name="device_actions_title">Device Actions</string>
+    <string name="preset_actions_title">Preset Actions</string>
 </resources>

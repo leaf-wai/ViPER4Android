@@ -1,48 +1,42 @@
 package com.llsl.viper4android.ui.components
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Button
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.unit.dp
 import com.llsl.viper4android.R
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.basic.TextField
+import top.yukonga.miuix.kmp.preference.SliderPreference
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.window.WindowDialog
 import java.util.Locale
 import kotlin.math.roundToInt
 
+@Immutable
 data class SliderEdit(
     val displayValue: Double,
     val displayRange: ClosedFloatingPointRange<Double>,
     val decimals: Int,
     val onCommit: (Double) -> Unit,
     val unit: String = "",
+    val defaultValue: Double? = null,
 )
 
 @Composable
@@ -60,56 +54,18 @@ fun LabeledSlider(
     var showEditDialog by remember { mutableStateOf(false) }
     val canEdit = enabled && edit != null
 
-    Column(modifier = modifier.fillMaxWidth().padding(vertical = UiDimens.XSmall)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f),
-            )
-            val valueModifier =
-                if (canEdit) {
-                    Modifier.clickable { showEditDialog = true }
-                } else {
-                    Modifier
-                }.padding(horizontal = UiDimens.Medium, vertical = UiDimens.XSmall)
-            Text(
-                text = valueLabel ?: value.roundToInt().toString(),
-                style = MaterialTheme.typography.bodyMedium,
-                color =
-                    if (canEdit) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                modifier = valueModifier,
-            )
-        }
-        val hideTicks = steps == 0 || steps >= 10
-        Slider(
-            value = value,
-            onValueChange = onValueChange,
-            valueRange = valueRange,
-            steps = steps,
-            enabled = enabled,
-            modifier = Modifier.fillMaxWidth(),
-            colors =
-                if (hideTicks) {
-                    SliderDefaults.colors(
-                        activeTickColor = Color.Transparent,
-                        inactiveTickColor = Color.Transparent,
-                        disabledActiveTickColor = Color.Transparent,
-                        disabledInactiveTickColor = Color.Transparent,
-                    )
-                } else {
-                    SliderDefaults.colors()
-                },
-        )
-    }
+    SliderPreference(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = modifier,
+        title = label,
+        valueText = valueLabel ?: value.roundToInt().toString(),
+        onClick = if (canEdit) ({ showEditDialog = true }) else null,
+        holdDownState = showEditDialog,
+        enabled = enabled,
+        valueRange = valueRange,
+        steps = steps.coerceAtLeast(0),
+    )
 
     if (showEditDialog && edit != null) {
         NumberInputDialog(
@@ -125,6 +81,8 @@ fun NumberInputDialog(
     label: String,
     edit: SliderEdit,
     onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    show: Boolean = true,
 ) {
     val min = edit.displayRange.start
     val max = edit.displayRange.endInclusive
@@ -136,7 +94,7 @@ fun NumberInputDialog(
             String.format(Locale.US, "%.${edit.decimals}f", v)
         }
 
-    var text by remember { mutableStateOf(fmt(edit.displayValue)) }
+    var text by remember(edit.displayValue) { mutableStateOf(fmt(edit.displayValue)) }
     val parsed = text.trim().toDoubleOrNull()
     val isValid = parsed != null
 
@@ -152,63 +110,62 @@ fun NumberInputDialog(
             stringResource(R.string.dialog_value_range, fmt(min), fmt(max))
         }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(UiDimens.DialogCornerRadius),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            tonalElevation = UiDimens.Compact,
-        ) {
-            Column(modifier = Modifier.padding(UiDimens.IconLarge)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = null)
+    WindowDialog(
+        show = show,
+        modifier = modifier,
+        title = label,
+        summary = rangeHint,
+        onDismissRequest = onDismiss,
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            TextField(
+                value = text,
+                onValueChange = { text = it },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                trailingIcon = if (edit.unit.isNotEmpty()) {
+                    {
+                        Text(
+                            text = edit.unit,
+                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                            style = MiuixTheme.textStyles.body2,
+                            modifier = Modifier.padding(end = 12.dp),
+                        )
                     }
-                }
-                OutlinedTextField(
-                    value = text,
-                    onValueChange = { text = it },
-                    singleLine = true,
-                    isError = !isValid,
-                    suffix = if (edit.unit.isNotEmpty()) ({ Text(edit.unit) }) else null,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    supportingText = { Text(rangeHint) },
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(top = UiDimens.Standard, bottom = UiDimens.IconLarge),
+                } else {
+                    null
+                },
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            // Edit Dialog 按钮顺序：not_modified | cancel | confirm（三按钮 weight(1f) + spacedBy(8.dp)）
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                TextButton(
+                    text = stringResource(R.string.common_not_modified),
+                    onClick = {
+                        text = fmt(edit.defaultValue ?: edit.displayValue)
+                    },
+                    modifier = Modifier.weight(1f),
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    FilledTonalButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text(stringResource(android.R.string.cancel))
-                    }
-                    Spacer(modifier = Modifier.width(UiDimens.Medium))
-                    Button(
-                        onClick = {
-                            val clamped = parsed!!.coerceIn(min, max)
-                            edit.onCommit(clamped)
-                            onDismiss()
-                        },
-                        enabled = isValid,
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text(stringResource(android.R.string.ok))
-                    }
-                }
+                TextButton(
+                    text = stringResource(R.string.common_cancel),
+                    onClick = onDismiss,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(
+                    text = stringResource(R.string.common_confirm),
+                    onClick = {
+                        val clamped = parsed!!.coerceIn(min, max)
+                        edit.onCommit(clamped)
+                        onDismiss()
+                    },
+                    enabled = isValid,
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.textButtonColorsPrimary(),
+                )
             }
         }
     }

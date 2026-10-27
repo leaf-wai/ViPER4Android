@@ -1,14 +1,17 @@
 package com.llsl.viper4android.effect
 
+import androidx.compose.runtime.Immutable
 import com.llsl.viper4android.data.model.DsPreset
 import com.llsl.viper4android.data.model.EqPreset
 
+@Immutable
 data class OutputState(
     val volume: Float = 1.0f,
     val channelPan: Float = 0.0f,
     val limiter: Float = 1.0f,
 )
 
+@Immutable
 data class PlaybackGainControlState(
     val enable: Boolean = false,
     val strength: Float = 1.0f,
@@ -16,6 +19,7 @@ data class PlaybackGainControlState(
     val outputThreshold: Float = 1.0f,
 )
 
+@Immutable
 data class LufsState(
     val enable: Boolean = false,
     val target: Float = -14.0f,
@@ -23,6 +27,7 @@ data class LufsState(
     val speed: Int = 1,
 )
 
+@Immutable
 data class FetCompressorState(
     val enable: Boolean = false,
     val threshold: Float = compressorDbToRaw(-18.0f),
@@ -43,6 +48,7 @@ data class FetCompressorState(
     val noClip: Boolean = true,
 )
 
+@Immutable
 data class MultibandCompressorState(
     val enable: Boolean = false,
     val bandEnables: List<Boolean> = listOf(true, true, true, true, true),
@@ -65,17 +71,20 @@ data class MultibandCompressorState(
     val noClips: List<Boolean> = listOf(true, true, true, true, true),
 )
 
+@Immutable
 data class DdcState(
     val enable: Boolean = false,
     val device: String = "",
 )
 
+@Immutable
 data class SpectrumExtensionState(
     val enable: Boolean = false,
     val strength: Int = 7600,
     val exciter: Float = 0.0f,
 )
 
+@Immutable
 data class EqState(
     val enable: Boolean = false,
     val bandCount: Int = 10,
@@ -85,6 +94,7 @@ data class EqState(
     val presets: List<EqPreset> = emptyList(),
 )
 
+@Immutable
 data class DynamicEqState(
     val enable: Boolean = false,
     val bandCount: Int = 3,
@@ -97,12 +107,14 @@ data class DynamicEqState(
     val filterTypes: List<Int> = listOf(0, 0, 0),
 )
 
+@Immutable
 data class ConvolverState(
     val enable: Boolean = false,
     val kernelFile: String = "",
     val crossChannel: Float = 0.0f,
 )
 
+@Immutable
 data class FieldSurroundState(
     val enable: Boolean = false,
     val widening: Float = 0.0f,
@@ -110,6 +122,7 @@ data class FieldSurroundState(
     val depth: Int = 200,
 )
 
+@Immutable
 data class DiffSurroundState(
     val enable: Boolean = false,
     val delay: Float = 5.0f,
@@ -118,6 +131,7 @@ data class DiffSurroundState(
     val lpCutoff: Int = 0,
 )
 
+@Immutable
 data class StereoImagerState(
     val enable: Boolean = false,
     val lowWidth: Float = 1.0f,
@@ -127,11 +141,13 @@ data class StereoImagerState(
     val highCrossover: Int = 4000,
 )
 
+@Immutable
 data class HeadphoneSurroundState(
     val enable: Boolean = false,
     val quality: Int = 0,
 )
 
+@Immutable
 data class ReverbState(
     val enable: Boolean = false,
     val roomSize: Float = 0.0f,
@@ -141,6 +157,7 @@ data class ReverbState(
     val dry: Float = 1.0f,
 )
 
+@Immutable
 data class DynamicSystemState(
     val enable: Boolean = false,
     val xLow: Int = 0,
@@ -155,6 +172,7 @@ data class DynamicSystemState(
     val presets: List<DsPreset> = emptyList(),
 )
 
+@Immutable
 data class PsychoacousticBassState(
     val enable: Boolean = false,
     val cutoff: Int = 80,
@@ -163,6 +181,7 @@ data class PsychoacousticBassState(
     val originalLevel: Float = 1.0f,
 )
 
+@Immutable
 data class BassState(
     val enable: Boolean = false,
     val mode: Int = 0,
@@ -171,6 +190,7 @@ data class BassState(
     val antiPop: Boolean = false,
 )
 
+@Immutable
 data class BassMonoState(
     val enable: Boolean = false,
     val mode: Int = 0,
@@ -179,22 +199,26 @@ data class BassMonoState(
     val antiPop: Boolean = false,
 )
 
+@Immutable
 data class ClarityState(
     val enable: Boolean = false,
     val mode: Int = 0,
     val gain: Float = 0.5f,
 )
 
+@Immutable
 data class CureState(
     val enable: Boolean = false,
     val crossfeedPreset: Int = 0,
 )
 
+@Immutable
 data class AnalogXState(
     val enable: Boolean = false,
     val mode: Int = 0,
 )
 
+@Immutable
 data class TubeSimulatorState(
     val enable: Boolean = false,
     val model: Int = 0,
@@ -202,10 +226,12 @@ data class TubeSimulatorState(
     val mix: Float = 0.3f,
 )
 
+@Immutable
 data class SpeakerCorrectionState(
     val enable: Boolean = false,
 )
 
+@Immutable
 data class EffectState(
     val masterEnable: Boolean = false,
     val out: OutputState = OutputState(),

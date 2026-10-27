@@ -314,7 +314,7 @@
     <string name="debug_export_title">导出日志</string>
     <string name="debug_export_confirm">将应用和驱动日志保存到外部存储?\n\n%1$s\n%2$s</string>
     <string name="debug_export_action">导出</string>
-    <string name="debug_export_done">日志已导出到 %1$s</string>z
+    <string name="debug_export_done">日志已导出到 %1$s</string>
     <string name="debug_export_failed">导出失败</string>
 
     <!-- Debug filters -->
@@ -352,4 +352,45 @@
     <string name="ds_device_high_end_headphone_v1">高端耳机 (v1)</string>
     <string name="ds_device_common_headphone_v1">普通耳机 (v1)</string>
     <string name="ds_device_common_earphone_v1">普通耳塞 (v1)</string>
+
+    <!-- Navigation Tabs -->
+    <string name="tab_overview">概览</string>
+    <string name="tab_effects">音效</string>
+    <string name="tab_preset_device">预设与设备</string>
+    <string name="tab_settings">设置</string>
+
+    <!-- Common MIUIX Dialog & Action -->
+    <string name="common_not_modified">未修改</string>
+    <string name="common_cancel">取消</string>
+    <string name="common_confirm">确定</string>
+    <string name="common_collapse_all">全部收起</string>
+    <string name="common_expand_all">全部展开</string>
+    <string name="common_refresh">刷新</string>
+
+    <!-- Overview Tab -->
+    <string name="overview_master_control">全局控制</string>
+    <string name="overview_master_summary_on">音频处理已开启</string>
+    <string name="overview_master_summary_off">音频处理已关闭</string>
+    <string name="overview_current_device">当前设备</string>
+    <string name="overview_driver_section">驱动状态</string>
+    <string name="overview_mode_root">ROOT</string>
+    <string name="overview_mode_global">全局</string>
+    <string name="overview_mode_session">会话</string>
+
+    <!-- Effects Tab -->
+    <string name="effects_enabled_count">已开启 %1$d 项</string>
+    <string name="effects_tap_to_edit_eq">点击曲线进入均衡器详细编辑</string>
+    <string name="effects_add_band">添加频段</string>
+    <string name="effects_band_title">频段 %1$d</string>
+
+    <!-- Preset & Device Tab -->
+    <string name="preset_section_title">已保存预设</string>
+    <string name="device_section_title">音频设备</string>
+    <string name="preset_loaded_toast">已加载预设：%1$s</string>
+    <string name="preset_saved_toast">已保存预设：%1$s</string>
+    <string name="preset_deleted_toast">已删除预设：%1$s</string>
+    <string name="device_preset_loaded_toast">已加载设备预设：%1$s</string>
+    <string name="device_preset_updated_toast">已更新设备预设：%1$s</string>
+    <string name="device_actions_title">设备操作</string>
+    <string name="preset_actions_title">预设操作</string>
 </resources>

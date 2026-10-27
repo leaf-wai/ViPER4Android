@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -15,17 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,8 +24,20 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CardColors
+import top.yukonga.miuix.kmp.basic.HorizontalDivider
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.SmallTitle
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Download
+import top.yukonga.miuix.kmp.preference.ArrowPreference
+import top.yukonga.miuix.kmp.preference.SwitchPreference
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
-private val DialogCardCornerRadius = UiDimens.Standard
+private val DialogCardCornerRadius = 16.dp
 private val DialogButtonSpacing = UiDimens.Medium
 private val DialogDividerPadding = UiDimens.Standard
 private val DialogEmptyVerticalPadding = UiDimens.IconLarge
@@ -50,34 +52,32 @@ private val DialogRowVerticalPadding = UiDimens.Large
 private val DialogRowValueSpacing = UiDimens.Standard
 private val DialogRowIconSpacing = UiDimens.Large
 private val DialogSmallIconSize = UiDimens.IconMedium
-private val DialogSectionStartPadding = UiDimens.Medium
-private val DialogSectionTopPadding = UiDimens.Standard
-private val DialogSectionBottomPadding = UiDimens.Compact
 
 @Composable
-fun DialogSectionLabel(label: String) {
-    Text(
+fun DialogSectionLabel(
+    label: String,
+    modifier: Modifier = Modifier,
+) {
+    SmallTitle(
         text = label,
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-        modifier =
-            Modifier.padding(
-                start = DialogSectionStartPadding,
-                top = DialogSectionTopPadding,
-                bottom = DialogSectionBottomPadding,
-            ),
+        modifier = modifier,
+        insideMargin = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
     )
 }
 
 @Composable
-fun DialogCard(content: @Composable () -> Unit) {
+fun DialogCard(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(DialogCardCornerRadius),
-        colors =
-            CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-            ),
+        modifier = modifier.fillMaxWidth(),
+        cornerRadius = DialogCardCornerRadius,
+        insideMargin = PaddingValues(0.dp),
+        colors = CardColors(
+            color = MiuixTheme.colorScheme.surfaceContainer,
+            contentColor = MiuixTheme.colorScheme.onSurfaceContainer,
+        ),
     ) {
         Column { content() }
     }
@@ -85,55 +85,64 @@ fun DialogCard(content: @Composable () -> Unit) {
 
 @Composable
 fun DialogListCard(
+    modifier: Modifier = Modifier,
     maxHeight: Dp = DialogListMaxHeight,
     content: LazyListScope.() -> Unit,
 ) {
-    DialogCard {
+    DialogCard(modifier = modifier) {
         DialogList(maxHeight = maxHeight, content = content)
     }
 }
 
 @Composable
 fun DialogList(
+    modifier: Modifier = Modifier,
     maxHeight: Dp = DialogListMaxHeight,
     content: LazyListScope.() -> Unit,
 ) {
     LazyColumn(
-        modifier = Modifier.heightIn(max = maxHeight),
+        modifier = modifier.heightIn(max = maxHeight),
         content = content,
     )
 }
 
 @Composable
-fun DialogEmptyState(text: String) {
+fun DialogEmptyState(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
     Text(
         text = text,
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = MiuixTheme.textStyles.body2,
+        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
         textAlign = TextAlign.Center,
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(vertical = DialogEmptyVerticalPadding),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = DialogEmptyVerticalPadding),
     )
 }
 
 @Composable
-fun DialogButtonRow(content: @Composable RowScope.() -> Unit) {
+fun DialogButtonRow(
+    modifier: Modifier = Modifier,
+    content: @Composable RowScope.() -> Unit,
+) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(DialogButtonSpacing),
         content = content,
     )
 }
 
 @Composable
-fun DialogIconActionRow(content: @Composable RowScope.() -> Unit) {
+fun DialogIconActionRow(
+    modifier: Modifier = Modifier,
+    content: @Composable RowScope.() -> Unit,
+) {
     Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(vertical = DialogListItemVerticalPadding),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = DialogListItemVerticalPadding),
         horizontalArrangement = Arrangement.SpaceEvenly,
         content = content,
     )
@@ -146,11 +155,10 @@ fun DialogListItemRow(
     content: @Composable RowScope.() -> Unit,
 ) {
     Row(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-                .padding(horizontal = DialogRowHorizontalPadding, vertical = DialogListItemVerticalPadding),
+        modifier = modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = DialogRowHorizontalPadding, vertical = DialogListItemVerticalPadding),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(DialogRowIconSpacing),
         content = content,
@@ -158,10 +166,12 @@ fun DialogListItemRow(
 }
 
 @Composable
-fun RowDivider() {
+fun RowDivider(
+    modifier: Modifier = Modifier,
+) {
     HorizontalDivider(
-        modifier = Modifier.padding(start = DialogDividerPadding, end = DialogDividerPadding),
-        color = MaterialTheme.colorScheme.outlineVariant,
+        modifier = modifier.padding(start = DialogDividerPadding, end = DialogDividerPadding),
+        color = MiuixTheme.colorScheme.dividerLine,
     )
 }
 
@@ -170,92 +180,62 @@ fun ToggleRow(
     label: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
     subtitle: String? = null,
 ) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = DialogRowHorizontalPadding, vertical = DialogRowVerticalPadding),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            subtitle?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-        Spacer(modifier = Modifier.width(DialogRowValueSpacing))
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
-    }
+    SwitchPreference(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        title = label,
+        modifier = modifier,
+        summary = subtitle,
+    )
 }
 
 @Composable
 fun NavRow(
     label: String,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
     subtitle: String? = null,
     leadingIcon: ImageVector? = null,
     statusColor: Color? = null,
+    holdDownState: Boolean = false,
 ) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick)
-                .padding(horizontal = DialogRowHorizontalPadding, vertical = DialogRowVerticalPadding),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        leadingIcon?.let {
-            Icon(
-                imageVector = it,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(DialogLeadingIconSize),
-            )
-            Spacer(modifier = Modifier.width(DialogRowIconSpacing))
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                statusColor?.let {
-                    Canvas(modifier = Modifier.size(DialogIndicatorSize)) {
-                        drawCircle(it)
+    ArrowPreference(
+        title = label,
+        modifier = modifier,
+        summary = subtitle,
+        onClick = onClick,
+        holdDownState = holdDownState,
+        startAction = if (leadingIcon != null || statusColor != null) {
+            {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(end = 12.dp),
+                ) {
+                    if (leadingIcon != null) {
+                        Icon(
+                            imageVector = leadingIcon,
+                            contentDescription = null,
+                            tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                            modifier = Modifier.size(DialogLeadingIconSize),
+                        )
                     }
-                    Spacer(modifier = Modifier.width(DialogSectionBottomPadding))
+                    if (statusColor != null) {
+                        if (leadingIcon != null) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        Canvas(modifier = Modifier.size(DialogIndicatorSize)) {
+                            drawCircle(statusColor)
+                        }
+                    }
                 }
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.weight(1f, fill = false),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
             }
-            subtitle?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        Icon(
-            imageVector = Icons.Default.ChevronRight,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
+        } else {
+            null
+        },
+    )
 }
 
 @Composable
@@ -263,39 +243,27 @@ fun ActionRow(
     label: String,
     subtitle: String,
     onClick: () -> Unit,
-    icon: ImageVector = Icons.Default.Download,
+    modifier: Modifier = Modifier,
+    icon: ImageVector = MiuixIcons.Download,
+    holdDownState: Boolean = false,
 ) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick)
-                .padding(horizontal = DialogRowHorizontalPadding, vertical = DialogRowVerticalPadding),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(DialogSmallIconSize),
-        )
-        Spacer(modifier = Modifier.width(DialogRowIconSpacing))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+    ArrowPreference(
+        title = label,
+        modifier = modifier,
+        summary = subtitle,
+        onClick = onClick,
+        holdDownState = holdDownState,
+        startAction = {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MiuixTheme.colorScheme.primary,
+                modifier = Modifier
+                    .padding(end = 16.dp)
+                    .size(DialogSmallIconSize),
             )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
+        },
+    )
 }
 
 @Composable
@@ -306,24 +274,24 @@ fun InfoRow(
     onClick: (() -> Unit)? = null,
 ) {
     Row(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-                .padding(horizontal = DialogRowHorizontalPadding, vertical = DialogRowVerticalPadding),
+        modifier = modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = DialogRowHorizontalPadding, vertical = DialogRowVerticalPadding),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MiuixTheme.textStyles.body1,
+            color = MiuixTheme.colorScheme.onSurface,
             modifier = Modifier.weight(.6f),
         )
         Spacer(modifier = Modifier.width(DialogRowValueSpacing))
         Text(
             text = value,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MiuixTheme.textStyles.body2,
+            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
             modifier = Modifier.weight(.4f),
             textAlign = TextAlign.End,
             maxLines = 2,
@@ -336,19 +304,19 @@ fun InfoRow(
 fun IndicatorInfoRow(
     label: String,
     indicatorColor: Color,
+    modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = DialogRowHorizontalPadding, vertical = DialogRowVerticalPadding),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = DialogRowHorizontalPadding, vertical = DialogRowVerticalPadding),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MiuixTheme.textStyles.body1,
+            color = MiuixTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f),
         )
         Canvas(modifier = Modifier.size(DialogIndicatorSize)) {
@@ -364,17 +332,26 @@ fun IconActionItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    tint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    tint: Color = MiuixTheme.colorScheme.onSurfaceVariantActions,
 ) {
+    val effectiveTint = if (enabled) tint else MiuixTheme.colorScheme.disabledOnSecondaryVariant
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier =
-            modifier
-                .clickable(enabled = enabled) { onClick() }
-                .padding(DialogIconActionPadding),
+        modifier = modifier
+            .clickable(enabled = enabled) { onClick() }
+            .padding(DialogIconActionPadding),
     ) {
-        Icon(icon, contentDescription = label, modifier = Modifier.size(DialogSmallIconSize), tint = tint)
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            modifier = Modifier.size(DialogSmallIconSize),
+            tint = effectiveTint,
+        )
         Spacer(modifier = Modifier.height(DialogIconActionSpacing))
-        Text(label, style = MaterialTheme.typography.labelSmall, color = tint)
+        Text(
+            text = label,
+            style = MiuixTheme.textStyles.footnote1,
+            color = effectiveTint,
+        )
     }
 }

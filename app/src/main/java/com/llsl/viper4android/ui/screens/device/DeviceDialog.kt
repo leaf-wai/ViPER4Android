@@ -2,24 +2,20 @@ package com.llsl.viper4android.ui.screens.device
 
 import android.text.format.DateUtils
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.SettingsBackupRestore
 import androidx.compose.material.icons.filled.Speaker
 import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,7 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.unit.dp
 import com.llsl.viper4android.R
 import com.llsl.viper4android.data.model.DeviceSettings
 import com.llsl.viper4android.ui.components.ConfirmDialog
@@ -42,7 +38,17 @@ import com.llsl.viper4android.ui.components.InfoRow
 import com.llsl.viper4android.ui.components.InputDialog
 import com.llsl.viper4android.ui.components.NavRow
 import com.llsl.viper4android.ui.components.RowDivider
-import com.llsl.viper4android.ui.theme.status_active_green
+import com.llsl.viper4android.ui.theme.StatusColors
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.Delete
+import top.yukonga.miuix.kmp.icon.extended.Edit
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.window.WindowDialog
 import java.text.SimpleDateFormat
 import java.util.Date
 
@@ -55,6 +61,7 @@ fun DeviceDialog(
     onUpdate: (String) -> Unit,
     onDelete: (String) -> Unit,
     onDismiss: () -> Unit,
+    show: Boolean = true,
 ) {
     var selectedDeviceId by remember { mutableStateOf<String?>(null) }
     var renamingDeviceId by remember { mutableStateOf<String?>(null) }
@@ -125,54 +132,58 @@ fun DeviceDialog(
         )
     }
 
-    AlertDialog(
-        modifier = Modifier.fillMaxWidth(0.9f),
-        properties = DialogProperties(usePlatformDefaultWidth = false),
+    WindowDialog(
+        title = if (selectedDevice == null) stringResource(R.string.device_dialog_title) else null,
+        show = show,
         onDismissRequest = onDismiss,
-        title = {
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 500.dp),
+        ) {
             if (selectedDevice != null) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
                 ) {
-                    IconButton(onClick = { selectedDeviceId = null }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                    IconButton(
+                        onClick = { selectedDeviceId = null },
+                        minHeight = 35.dp,
+                        minWidth = 35.dp,
+                        backgroundColor = MiuixTheme.colorScheme.secondaryContainer,
+                    ) {
+                        Icon(
+                            imageVector = MiuixIcons.Back,
+                            contentDescription = null,
+                        )
                     }
                     Text(
                         text = selectedDevice.deviceName,
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = MiuixTheme.textStyles.title3,
+                        color = MiuixTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    IconButton(onClick = {
-                        renameInput = selectedDevice.deviceName
-                        renamingDeviceId = selectedDevice.deviceId
-                    }) {
+                    IconButton(
+                        onClick = {
+                            renameInput = selectedDevice.deviceName
+                            renamingDeviceId = selectedDevice.deviceId
+                        },
+                        minHeight = 35.dp,
+                        minWidth = 35.dp,
+                        backgroundColor = MiuixTheme.colorScheme.secondaryContainer,
+                    ) {
                         Icon(
-                            Icons.Default.Edit,
+                            imageVector = MiuixIcons.Edit,
                             contentDescription = stringResource(R.string.action_rename),
                         )
                     }
                 }
-            } else {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(stringResource(R.string.device_dialog_title))
-                    IconButton(onClick = onDismiss) {
-                        Icon(
-                            Icons.Default.Close,
-                            contentDescription = stringResource(R.string.action_close),
-                        )
-                    }
-                }
-            }
-        },
-        text = {
-            if (selectedDevice != null) {
                 DeviceDetailView(
                     device = selectedDevice,
                     isActive = selectedDevice.deviceId == activeDeviceId,
@@ -190,15 +201,24 @@ fun DeviceDialog(
                     },
                 )
             } else {
-                DeviceListView(
-                    devices = devices,
-                    activeDeviceId = activeDeviceId,
-                    onSelect = { selectedDeviceId = it.deviceId },
+                Column(
+                    modifier = Modifier.weight(1f, fill = false),
+                ) {
+                    DeviceListView(
+                        devices = devices,
+                        activeDeviceId = activeDeviceId,
+                        onSelect = { selectedDeviceId = it.deviceId },
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                TextButton(
+                    text = stringResource(R.string.action_close),
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
-        },
-        confirmButton = {},
-    )
+        }
+    }
 }
 
 @Composable
@@ -212,13 +232,12 @@ private fun DeviceListView(
         return
     }
 
-    val sorted =
-        remember(devices, activeDeviceId) {
-            devices.sortedWith(
-                compareByDescending<DeviceSettings> { it.deviceId == activeDeviceId }
-                    .thenByDescending { it.lastConnected },
-            )
-        }
+    val sorted = remember(devices, activeDeviceId) {
+        devices.sortedWith(
+            compareByDescending<DeviceSettings> { it.deviceId == activeDeviceId }
+                .thenByDescending { it.lastConnected },
+        )
+    }
 
     DialogCard {
         LazyColumn {
@@ -244,20 +263,19 @@ private fun DeviceNavRow(
 ) {
     NavRow(
         label = device.deviceName,
-        subtitle =
-            if (isActive) {
-                stringResource(R.string.status_active)
-            } else {
-                DateUtils
-                    .getRelativeTimeSpanString(
-                        device.lastConnected,
-                        System.currentTimeMillis(),
-                        DateUtils.MINUTE_IN_MILLIS,
-                    ).toString()
-            },
+        subtitle = if (isActive) {
+            stringResource(R.string.status_active)
+        } else {
+            DateUtils
+                .getRelativeTimeSpanString(
+                    device.lastConnected,
+                    System.currentTimeMillis(),
+                    DateUtils.MINUTE_IN_MILLIS,
+                ).toString()
+        },
         onClick = onSelect,
         leadingIcon = deviceIcon(device),
-        statusColor = if (isActive) status_active_green else null,
+        statusColor = if (isActive) StatusColors.healthy else null,
     )
 }
 
@@ -286,23 +304,21 @@ private fun DeviceDetailView(
         RowDivider()
         InfoRow(
             label = stringResource(R.string.label_mode),
-            value =
-                if (device.isHeadphone) {
-                    stringResource(R.string.device_mode_headphone)
-                } else {
-                    stringResource(R.string.device_mode_speaker)
-                },
+            value = if (device.isHeadphone) {
+                stringResource(R.string.device_mode_headphone)
+            } else {
+                stringResource(R.string.device_mode_speaker)
+            },
         )
         RowDivider()
         InfoRow(
             label = stringResource(R.string.device_label_last_conn),
-            value =
-                if (isActive) {
-                    "-"
-                } else {
-                    SimpleDateFormat("yyyy-MM-dd HH:mm", LocalLocale.current.platformLocale)
-                        .format(Date(device.lastConnected))
-                },
+            value = if (isActive) {
+                "-"
+            } else {
+                SimpleDateFormat("yyyy-MM-dd HH:mm", LocalLocale.current.platformLocale)
+                    .format(Date(device.lastConnected))
+            },
         )
         RowDivider()
         DialogIconActionRow {
@@ -317,16 +333,11 @@ private fun DeviceDetailView(
                 onClick = onUpdate,
             )
             IconActionItem(
-                icon = Icons.Default.Delete,
+                icon = MiuixIcons.Delete,
                 label = stringResource(R.string.action_delete),
                 onClick = onDelete,
                 enabled = canDelete,
-                tint =
-                    if (!canDelete) {
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                    } else {
-                        MaterialTheme.colorScheme.error
-                    },
+                tint = StatusColors.danger,
             )
         }
     }

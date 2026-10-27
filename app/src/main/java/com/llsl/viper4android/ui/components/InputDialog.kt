@@ -5,28 +5,20 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Button
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.unit.dp
+import com.llsl.viper4android.R
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
+import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.basic.TextField
+import top.yukonga.miuix.kmp.window.WindowDialog
 
 @Composable
 fun InputDialog(
@@ -35,70 +27,47 @@ fun InputDialog(
     confirmLabel: String,
     onConfirm: (String) -> Unit,
     onDismiss: () -> Unit,
-    dismissLabel: String = stringResource(android.R.string.cancel),
+    modifier: Modifier = Modifier,
+    show: Boolean = true,
+    dismissLabel: String = stringResource(R.string.common_cancel),
     body: String? = null,
     placeholder: String = "",
 ) {
-    var value by remember { mutableStateOf(initialValue) }
+    var value by remember(initialValue) { mutableStateOf(initialValue) }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(UiDimens.DialogCornerRadius),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            tonalElevation = UiDimens.Compact,
-        ) {
-            Column(modifier = Modifier.padding(UiDimens.IconLarge)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = null)
-                    }
-                }
-                body?.let {
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = UiDimens.Medium),
-                    )
-                }
-                OutlinedTextField(
-                    value = value,
-                    onValueChange = { value = it },
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(top = UiDimens.Standard, bottom = UiDimens.IconLarge),
-                    placeholder = { Text(placeholder) },
-                    singleLine = true,
+    WindowDialog(
+        show = show,
+        modifier = modifier,
+        title = title,
+        summary = body,
+        onDismissRequest = onDismiss,
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            TextField(
+                value = value,
+                onValueChange = { value = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = placeholder,
+                useLabelAsPlaceholder = true,
+                singleLine = true,
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                TextButton(
+                    text = dismissLabel,
+                    onClick = onDismiss,
+                    modifier = Modifier.weight(1f),
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    FilledTonalButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text(dismissLabel)
-                    }
-                    Spacer(modifier = Modifier.width(UiDimens.Medium))
-                    Button(
-                        onClick = { if (value.isNotBlank()) onConfirm(value.trim()) },
-                        enabled = value.isNotBlank(),
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text(confirmLabel)
-                    }
-                }
+                TextButton(
+                    text = confirmLabel,
+                    onClick = { if (value.isNotBlank()) onConfirm(value.trim()) },
+                    enabled = value.isNotBlank(),
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.textButtonColorsPrimary(),
+                )
             }
         }
     }
