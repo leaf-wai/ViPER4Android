@@ -2,6 +2,7 @@ package com.llsl.viper4android.viper
 
 import com.llsl.viper4android.effect.EffectState
 import com.llsl.viper4android.utils.FileLogger
+import java.util.concurrent.ConcurrentHashMap
 
 sealed interface ParamValue {
     val index: Int
@@ -106,17 +107,33 @@ data class DriverStatus(
     val arch: String,
 )
 
+data class BulkApplyResult(
+    val ddcApplied: Boolean = true,
+)
+
+typealias BulkSideChannelHandler =
+    suspend (
+        ddcDevice: String,
+        convolverKernel: String,
+        clearDdc: Boolean,
+        clearConvolver: Boolean,
+        force: Boolean,
+        skipDrainDelay: Boolean,
+        send: (Int, ParamValue) -> Boolean,
+    ) -> BulkApplyResult
+
 interface ViperTransport {
-    var bulkSideChannels: ((ddcDevice: String, convolverKernel: String, force: Boolean) -> Unit)?
+    var bulkSideChannels: BulkSideChannelHandler?
 
     fun set(
         param: Int,
         value: ParamValue,
-    )
+    ): Boolean
 
-    fun pushFullState(
+    suspend fun pushFullState(
         state: EffectState,
         forceBulk: Boolean = false,
+        targetEffect: ViperEffect? = null,
     )
 
     fun probeStatus(): DriverStatus?
@@ -131,17 +148,63 @@ interface ViperTransport {
         kind: BulkKind,
         key: String,
     )
+
+    fun clearBulkCache()
+}
+
+private suspend fun dispatchBulkAndBuildEffectiveState(
+    state: EffectState,
+    forceBulk: Boolean,
+    skipDrainDelay: Boolean,
+    bulkSideChannels: BulkSideChannelHandler?,
+    send: (Int, ParamValue) -> Boolean,
+): EffectState {
+    val wantDdc = state.ddc.enable && state.ddc.device.isNotEmpty()
+    val ddcDevice = if (wantDdc) state.ddc.device else ""
+    val clearDdc = state.ddc.device.isEmpty()
+
+    val wantConvolver = state.convolver.enable && state.convolver.kernelFile.isNotEmpty()
+    val convolverKernel = if (wantConvolver) state.convolver.kernelFile else ""
+    val clearConvolver = state.convolver.kernelFile.isEmpty()
+
+    val bulkResult =
+        if (ddcDevice.isNotEmpty() || convolverKernel.isNotEmpty() || clearDdc || clearConvolver) {
+            bulkSideChannels?.invoke(
+                ddcDevice,
+                convolverKernel,
+                clearDdc,
+                clearConvolver,
+                forceBulk,
+                skipDrainDelay,
+                send,
+            ) ?: BulkApplyResult()
+        } else {
+            BulkApplyResult()
+        }
+
+    var effectiveState = state
+    if (effectiveState.ddc.enable && (!wantDdc || !bulkResult.ddcApplied)) {
+        effectiveState = effectiveState.copy(ddc = effectiveState.ddc.copy(enable = false))
+    }
+    if (effectiveState.convolver.enable && !wantConvolver) {
+        effectiveState = effectiveState.copy(convolver = effectiveState.convolver.copy(enable = false))
+    }
+    return effectiveState
 }
 
 class AidlTransport : ViperTransport {
-    override var bulkSideChannels: ((ddcDevice: String, convolverKernel: String, force: Boolean) -> Unit)? = null
+    override var bulkSideChannels: BulkSideChannelHandler? = null
 
-    private val bulkKeys = mutableMapOf<BulkKind, String>()
+    private val bulkKeys = ConcurrentHashMap<BulkKind, String>()
+
+    init {
+        ViperControlClient.onBinderDied = { clearBulkCache() }
+    }
 
     override fun set(
         param: Int,
         value: ParamValue,
-    ) {
+    ): Boolean =
         when (value) {
             is ParamValue.Bool -> {
                 if (value.index != -1) {
@@ -172,6 +235,7 @@ class AidlTransport : ViperTransport {
                     ViperControlClient.dispatchParam(param, value.v[0], value.v[1], value.v[2])
                 } else {
                     FileLogger.w("AidlTransport", "Dropping Ints param $param: size ${value.v.size} != 3")
+                    false
                 }
             }
 
@@ -183,28 +247,27 @@ class AidlTransport : ViperTransport {
                 ViperControlClient.dispatchParam(param, value.v)
             }
         }
-    }
 
-    override fun pushFullState(
+    override suspend fun pushFullState(
         state: EffectState,
         forceBulk: Boolean,
+        targetEffect: ViperEffect?,
     ) {
+        val effectiveState =
+            dispatchBulkAndBuildEffectiveState(
+                state = state,
+                forceBulk = forceBulk,
+                skipDrainDelay = false,
+                bulkSideChannels = bulkSideChannels,
+                send = ::set,
+            )
         val snapshotApplied =
             ViperControlClient.dispatchParam(
                 ViperParams.PARAM_SET_FULL_PARAMS,
-                ViperParamsSerializer.toByteArray(state),
+                ViperParamsSerializer.toByteArray(effectiveState),
             )
         if (!snapshotApplied) {
             FileLogger.w("AidlTransport", "Full snapshot dispatch failed")
-        }
-        val hasDdc = state.ddc.enable && state.ddc.device.isNotEmpty()
-        val hasKernel = state.convolver.enable && state.convolver.kernelFile.isNotEmpty()
-        if (hasDdc || hasKernel) {
-            bulkSideChannels?.invoke(
-                if (hasDdc) state.ddc.device else "",
-                if (hasKernel) state.convolver.kernelFile else "",
-                forceBulk,
-            )
         }
     }
 
@@ -222,42 +285,63 @@ class AidlTransport : ViperTransport {
     ) {
         bulkKeys[kind] = key
     }
+
+    override fun clearBulkCache() {
+        bulkKeys.clear()
+    }
 }
 
 class HidlTransport(
     private val effects: () -> List<ViperEffect>,
     private val activeEffect: () -> ViperEffect? = { null },
 ) : ViperTransport {
-    override var bulkSideChannels: ((ddcDevice: String, convolverKernel: String, force: Boolean) -> Unit)? = null
+    override var bulkSideChannels: BulkSideChannelHandler? = null
 
-    private val bulkKeys = mutableMapOf<BulkKind, String>()
+    private val bulkKeys = ConcurrentHashMap<BulkKind, String>()
 
     override fun set(
         param: Int,
         value: ParamValue,
-    ) {
-        effects().forEach { it.setParameter(param, value) }
+    ): Boolean {
+        val list = effects()
+        if (list.isEmpty()) return false
+        var allOk = true
+        for (fx in list) {
+            if (!fx.setParameter(param, value)) {
+                allOk = false
+            }
+        }
+        return allOk
     }
 
-    override fun pushFullState(
+    override suspend fun pushFullState(
         state: EffectState,
         forceBulk: Boolean,
+        targetEffect: ViperEffect?,
     ) {
-        val snapshot = ParamValue.Bytes(ViperParamsSerializer.toByteArray(state))
-        effects().forEach {
+        val targets = if (targetEffect != null) listOf(targetEffect) else effects()
+        if (targets.isEmpty()) return
+
+        val send: (Int, ParamValue) -> Boolean =
+            if (targetEffect != null) {
+                { param, value -> targetEffect.setParameter(param, value) }
+            } else {
+                ::set
+            }
+        val effectiveState =
+            dispatchBulkAndBuildEffectiveState(
+                state = state,
+                forceBulk = forceBulk || targetEffect != null,
+                skipDrainDelay = targetEffect != null,
+                bulkSideChannels = bulkSideChannels,
+                send = send,
+            )
+        val snapshot = ParamValue.Bytes(ViperParamsSerializer.toByteArray(effectiveState))
+        targets.forEach {
             val snapshotApplied = it.setParameter(ViperParams.PARAM_SET_FULL_PARAMS, snapshot)
             if (!snapshotApplied) {
                 FileLogger.w("HidlTransport", "Full snapshot dispatch failed")
             }
-        }
-        val hasDdc = state.ddc.enable && state.ddc.device.isNotEmpty()
-        val hasKernel = state.convolver.enable && state.convolver.kernelFile.isNotEmpty()
-        if (hasDdc || hasKernel) {
-            bulkSideChannels?.invoke(
-                if (hasDdc) state.ddc.device else "",
-                if (hasKernel) state.convolver.kernelFile else "",
-                true,
-            )
         }
     }
 
@@ -285,5 +369,9 @@ class HidlTransport(
         key: String,
     ) {
         bulkKeys[kind] = key
+    }
+
+    override fun clearBulkCache() {
+        bulkKeys.clear()
     }
 }

@@ -52,6 +52,7 @@ import com.llsl.viper4android.utils.UpdateChecker
 import com.llsl.viper4android.utils.UpdateResult
 import com.llsl.viper4android.viper.ParamValue
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -157,6 +158,7 @@ class MainViewModel
         private val audioOutputDetector = AudioOutputDetector(application)
         private var eqPresetsJob: Job? = null
         private var dsPresetsJob: Job? = null
+        private var ddcJob: Job? = null
 
         private val serviceConnection =
             object : ServiceConnection {
@@ -253,6 +255,13 @@ class MainViewModel
                     else -> {}
                 }
             }
+            schedulePersistPref(pref, value)
+        }
+
+        private fun <T> schedulePersistPref(
+            pref: EffectPref<T>,
+            value: T,
+        ) {
             persistJobs[pref.prefKey]?.cancel()
             persistJobs[pref.prefKey] =
                 viewModelScope.launch(Dispatchers.IO) {
@@ -389,6 +398,7 @@ class MainViewModel
         }
 
         fun dispatchFullState() {
+            ddcJob?.cancel()
             val service = viperService ?: return
             service.dispatchFullState(uiState.value)
         }
@@ -420,16 +430,26 @@ class MainViewModel
         fun setDdcDevice(name: String) {
             FileLogger.i("ViewModel", "DDC device: $name")
             applyPref(Effects.ddc.device, name)
-            if (!uiState.value.ddc.enable) return
-            viewModelScope.launch(Dispatchers.IO) { applyDdcDevice(name) }
+            if (!uiState.value.ddc.enable || !uiState.value.masterEnable) return
+            ddcJob?.cancel()
+            ddcJob = viewModelScope.launch(Dispatchers.IO) { applyDdcDevice(name, wasEnabled = true) }
         }
 
-        private fun applyDdcDevice(name: String) {
+        private suspend fun applyDdcDevice(
+            name: String,
+            wasEnabled: Boolean = uiState.value.ddc.enable,
+        ) {
             if (!uiState.value.ddc.enable) return
             try {
                 ifMasterOn {
-                    viperService?.applyDdcDevice(name, force = true)
+                    viperService?.switchDdcDeviceSafely(
+                        name = name,
+                        wasEnabled = wasEnabled,
+                        reEnable = name.isNotEmpty(),
+                    )
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 FileLogger.e("ViewModel", "Failed to apply DDC device: $name", e)
             }
@@ -755,14 +775,39 @@ class MainViewModel
         }
 
         fun setDdcEnabled(enabled: Boolean) {
-            applyPref(Effects.ddc.enable, enabled)
-            if (enabled) {
-                val v = uiState.value.ddc
-                applyPref(Effects.ddc.device, v.device)
-                viewModelScope.launch(Dispatchers.IO) {
-                    applyDdcDevice(v.device)
-                }
+            ddcJob?.cancel()
+            if (!enabled) {
+                applyPref(Effects.ddc.enable, false)
+                return
             }
+            val device = uiState.value.ddc.device
+            if (device.isEmpty()) {
+                // 未选中校准文件时不下发 PARAM_DDC_ENABLE = true，保持与全量推送一致
+                uiState.update { Effects.ddc.enable.set(it, true) }
+                schedulePersistPref(Effects.ddc.enable, true)
+                return
+            }
+            val service = viperService
+            if (!uiState.value.masterEnable || service == null || !service.needsDdcStream(device)) {
+                applyPref(Effects.ddc.enable, true)
+                return
+            }
+            uiState.update { Effects.ddc.enable.set(it, true) }
+            schedulePersistPref(Effects.ddc.enable, true)
+            ddcJob =
+                viewModelScope.launch(Dispatchers.IO) {
+                    try {
+                        service.switchDdcDeviceSafely(
+                            name = device,
+                            wasEnabled = false,
+                            reEnable = true,
+                        )
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        FileLogger.e("ViewModel", "Failed to enable DDC with device: $device", e)
+                    }
+                }
         }
 
         fun setSpectrumExtensionEnabled(enabled: Boolean) {
@@ -1319,7 +1364,15 @@ class MainViewModel
                 var count = 0
                 for ((index, uri) in uris.withIndex()) {
                     try {
-                        if (copyUriToFile(uri, destDir, "imported_$count.vdc") != null) count++
+                        val copied = copyUriToFile(uri, destDir, "imported_$count.vdc")
+                        if (copied != null) {
+                            if (ViperService.parseVdc(copied) != null) {
+                                count++
+                            } else {
+                                copied.delete()
+                                FileLogger.w("ViewModel", "Rejected invalid or unstable VDC: ${copied.name}")
+                            }
+                        }
                     } catch (e: Exception) {
                         FileLogger.e("ViewModel", "Failed to import VDC from $uri", e)
                     }
@@ -1357,8 +1410,9 @@ class MainViewModel
                 file.delete()
                 if (uiState.value.ddc.device == name) {
                     applyPref(Effects.ddc.device, "")
-                    if (uiState.value.ddc.enable) {
-                        viewModelScope.launch(Dispatchers.IO) { applyDdcDevice("") }
+                    if (uiState.value.ddc.enable && uiState.value.masterEnable) {
+                        ddcJob?.cancel()
+                        ddcJob = viewModelScope.launch(Dispatchers.IO) { applyDdcDevice("", wasEnabled = true) }
                     }
                 }
                 refreshFileLists()

@@ -26,10 +26,14 @@ object ViperControlClient {
     @Volatile
     private var cachedBinder: IBinder? = null
 
+    @Volatile
+    var onBinderDied: (() -> Unit)? = null
+
     private val deathRecipient =
         IBinder.DeathRecipient {
             FileLogger.w("CtrlClient", "viper.control binder died, clearing cache")
             cachedBinder = null
+            onBinderDied?.invoke()
         }
 
     private fun lookupService(): IBinder? =

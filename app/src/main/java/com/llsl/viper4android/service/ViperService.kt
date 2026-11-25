@@ -23,22 +23,33 @@ import com.llsl.viper4android.effect.serializeEffectPrefs
 import com.llsl.viper4android.utils.FileLogger
 import com.llsl.viper4android.utils.WavDecoder
 import com.llsl.viper4android.viper.AidlTransport
+import com.llsl.viper4android.viper.BulkApplyResult
 import com.llsl.viper4android.viper.BulkKind
 import com.llsl.viper4android.viper.DriverStatus
 import com.llsl.viper4android.viper.EffectRegistry
 import com.llsl.viper4android.viper.HidlTransport
 import com.llsl.viper4android.viper.ParamValue
+import com.llsl.viper4android.viper.ViperEffect
 import com.llsl.viper4android.viper.ViperParams
 import com.llsl.viper4android.viper.ViperTransport
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.zip.CRC32
 import javax.inject.Inject
+import kotlin.time.Duration.Companion.milliseconds
 
 @AndroidEntryPoint
 class ViperService : LifecycleService() {
@@ -47,6 +58,7 @@ class ViperService : LifecycleService() {
 
     companion object {
         private const val NOTIFICATION_ID = 1
+        private const val DDC_DRAIN_DELAY_MS = 50L
 
         const val ACTION_START = "com.llsl.viper4android.service.START"
         const val ACTION_STOP = "com.llsl.viper4android.service.STOP"
@@ -72,6 +84,76 @@ class ViperService : LifecycleService() {
                 }
             context.startForegroundService(intent)
         }
+
+        fun parseVdc(file: File): Pair<List<FloatArray>, List<FloatArray>>? {
+            try {
+                var coeffs44100: FloatArray? = null
+                var coeffs48000: FloatArray? = null
+                for (line in file.readLines()) {
+                    val trimmed = line.trim()
+                    when {
+                        trimmed.startsWith("SR_44100:") -> {
+                            coeffs44100 =
+                                trimmed
+                                    .removePrefix("SR_44100:")
+                                    .split(",")
+                                    .mapNotNull { token -> token.trim().takeIf { it.isNotEmpty() }?.toFloat() }
+                                    .toFloatArray()
+                        }
+
+                        trimmed.startsWith("SR_48000:") -> {
+                            coeffs48000 =
+                                trimmed
+                                    .removePrefix("SR_48000:")
+                                    .split(",")
+                                    .mapNotNull { token -> token.trim().takeIf { it.isNotEmpty() }?.toFloat() }
+                                    .toFloatArray()
+                        }
+                    }
+                }
+
+                val a = coeffs44100
+                val b = coeffs48000
+                if (a == null || b == null || a.isEmpty() || a.size != b.size || a.size % 5 != 0) {
+                    FileLogger.w(
+                        "Service",
+                        "DDC coefficient parse failure: ${file.name} 44100=${a?.size} 48000=${b?.size}",
+                    )
+                    return null
+                }
+                val sec44 = a.toList().chunked(5).map { it.toFloatArray() }
+                val sec48 = b.toList().chunked(5).map { it.toFloatArray() }
+                sec44.forEachIndexed { idx, s ->
+                    if (!isStableBiquadSection(s)) {
+                        FileLogger.e(
+                            "Service",
+                            "Unstable DDC section in ${file.name} (SR_44100[$idx]): a1=${s[3]} a2=${s[4]}",
+                        )
+                        return null
+                    }
+                }
+                sec48.forEachIndexed { idx, s ->
+                    if (!isStableBiquadSection(s)) {
+                        FileLogger.e(
+                            "Service",
+                            "Unstable DDC section in ${file.name} (SR_48000[$idx]): a1=${s[3]} a2=${s[4]}",
+                        )
+                        return null
+                    }
+                }
+                return sec44 to sec48
+            } catch (e: Exception) {
+                FileLogger.e("Service", "Failed to parse DDC: ${file.name}", e)
+                return null
+            }
+        }
+
+        internal fun isStableBiquadSection(section: FloatArray): Boolean {
+            if (section.size != 5 || section.any { !it.isFinite() }) return false
+            val a1 = section[3].toDouble()
+            val a2 = section[4].toDouble()
+            return a2 > -1.0 && a2 < 1.0 && (1.0 - a1 - a2) > 0.0 && (1.0 + a1 - a2) > 0.0
+        }
     }
 
     inner class LocalBinder : Binder() {
@@ -87,6 +169,9 @@ class ViperService : LifecycleService() {
     private var sessionMonitor: AudioSessionMonitor? = null
     private var stateProvider: (() -> EffectState)? = null
     private var lastUiState: EffectState? = null
+    private val configMutex = Mutex()
+    private val statePushMutex = Mutex()
+    private var stateApplyJob: Job? = null
 
     @Volatile
     private var excludedApps: Set<String> = emptySet()
@@ -149,24 +234,28 @@ class ViperService : LifecycleService() {
         }
     }
 
+    @Volatile
     private var configLoaded = false
 
     private suspend fun ensureConfigLoaded() {
         if (configLoaded) return
-        useAidlTypeUuid = repository.aidlMode
-        effectRegistry.aidlTypeUuid = useAidlTypeUuid
-        transport =
-            if (useAidlTypeUuid) {
-                AidlTransport()
-            } else {
-                HidlTransport(
-                    { effectRegistry.liveEffects() },
-                    activeEffect = { effectRegistry.activeEffect() },
-                )
-            }.also { installBulkSideChannels(it) }
-        globalMode = repository.getBooleanPreference(ViperRepository.PREF_GLOBAL_MODE).first()
-        bootMasterEnabled = repository.getBooleanPreference(ViperRepository.PREF_MASTER_ENABLE).first()
-        configLoaded = true
+        configMutex.withLock {
+            if (configLoaded) return
+            useAidlTypeUuid = repository.aidlMode
+            effectRegistry.aidlTypeUuid = useAidlTypeUuid
+            transport =
+                if (useAidlTypeUuid) {
+                    AidlTransport()
+                } else {
+                    HidlTransport(
+                        { effectRegistry.liveEffects() },
+                        activeEffect = { effectRegistry.activeEffect() },
+                    )
+                }.also { installBulkSideChannels(it) }
+            globalMode = repository.getBooleanPreference(ViperRepository.PREF_GLOBAL_MODE).first()
+            bootMasterEnabled = repository.getBooleanPreference(ViperRepository.PREF_MASTER_ENABLE).first()
+            configLoaded = true
+        }
     }
 
     override fun onBind(intent: Intent): IBinder {
@@ -174,35 +263,88 @@ class ViperService : LifecycleService() {
         return binder
     }
 
-    private fun initGlobalEffect() {
-        effectRegistry.ensureGlobal()
-    }
+    private fun initGlobalEffect(): ViperEffect? = effectRegistry.ensureGlobal()
 
     private fun installBulkSideChannels(t: ViperTransport) {
-        t.bulkSideChannels = { ddc, kernel, force ->
-            if (ddc.isNotEmpty()) applyDdcDevice(ddc, force)
-            if (kernel.isNotEmpty()) applyConvolverKernel(kernel, force)
+        t.bulkSideChannels = { ddc, kernel, clearDdc, clearConvolver, force, skipDrainDelay, send ->
+            val ddcApplied =
+                when {
+                    ddc.isNotEmpty() -> {
+                        streamDdcInternal(
+                            name = ddc,
+                            wasEnabled = !skipDrainDelay,
+                            reEnable = false,
+                            force = force,
+                            skipDrainDelay = skipDrainDelay,
+                            send = send,
+                        )
+                    }
+
+                    clearDdc && t.shouldStream(BulkKind.DDC, "", force = false) -> {
+                        streamDdcInternal(
+                            name = "",
+                            wasEnabled = !skipDrainDelay,
+                            reEnable = false,
+                            force = false,
+                            skipDrainDelay = skipDrainDelay,
+                            send = send,
+                        )
+                        false
+                    }
+
+                    else -> false
+                }
+            when {
+                kernel.isNotEmpty() -> applyConvolverKernel(kernel, force, send)
+                clearConvolver && t.shouldStream(BulkKind.CONVOLVER, "", force = false) -> {
+                    applyConvolverKernel("", force = false, send = send)
+                }
+            }
+            BulkApplyResult(ddcApplied = ddcApplied)
         }
     }
 
-    private fun applyState(
+    private suspend fun applyState(
         state: EffectState,
         masterOn: Boolean,
     ) {
         if (!masterOn) {
-            stopSessionMonitor()
-            releaseAllSessions()
-            effectRegistry.releaseGlobal()
+            withContext(Dispatchers.Main.immediate) {
+                stopSessionMonitor()
+            }
+            withContext(Dispatchers.IO) {
+                statePushMutex.withLock {
+                    releaseAllSessions()
+                    effectRegistry.releaseGlobal()
+                    if (::transport.isInitialized) {
+                        transport.clearBulkCache()
+                    }
+                }
+            }
             return
         }
-        val newGlobalEffect = globalMode && effectRegistry.globalEffect() == null
-        if (globalMode) {
-            if (newGlobalEffect) initGlobalEffect()
-        } else {
-            if (sessionMonitor == null) startSessionMonitor()
+        val newGlobalEffect =
+            if (globalMode) {
+                val hadGlobal = effectRegistry.globalEffect() != null
+                val effect = initGlobalEffect()
+                !hadGlobal && effect != null
+            } else {
+                withContext(Dispatchers.Main.immediate) {
+                    if (sessionMonitor == null) startSessionMonitor()
+                }
+                false
+            }
+        if (globalMode && effectRegistry.globalEffect() == null) {
+            FileLogger.w("Service", "Skipping full state push: global effect unavailable")
+            return
         }
         effectRegistry.liveEffects().forEach { it.enabled = true }
-        transport.pushFullState(state, forceBulk = newGlobalEffect)
+        withContext(Dispatchers.IO) {
+            statePushMutex.withLock {
+                if (!masterEnabled) return@withLock
+                transport.pushFullState(state, forceBulk = newGlobalEffect)
+            }
+        }
     }
 
     private var currentServiceDeviceId: String = ""
@@ -264,11 +406,20 @@ class ViperService : LifecycleService() {
         return deserializeEffectPrefs(JSONObject(saved.settingsJson), baseState)
     }
 
-    private suspend fun dispatchFullStateToEffect() {
+    private suspend fun dispatchFullStateToEffect(targetEffect: ViperEffect? = null) {
         if (!masterEnabled) return
         val state = currentDeviceState()
         lastUiState = state
-        transport.pushFullState(state, forceBulk = true)
+        withContext(Dispatchers.IO) {
+            statePushMutex.withLock {
+                if (!masterEnabled) return@withLock
+                transport.pushFullState(
+                    state = state,
+                    forceBulk = true,
+                    targetEffect = targetEffect,
+                )
+            }
+        }
     }
 
     override fun onStartCommand(
@@ -284,33 +435,44 @@ class ViperService : LifecycleService() {
             }
 
             ACTION_STOP -> {
+                stateApplyJob?.cancel()
+                stopSessionMonitor()
                 releaseAllSessions()
                 effectRegistry.releaseGlobal()
+                if (::transport.isInitialized) {
+                    transport.clearBulkCache()
+                }
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }
 
             ACTION_TOGGLE_MASTER -> {
                 val next = intent.getBooleanExtra(EXTRA_MASTER_ENABLED, false)
-                lifecycleScope.launch {
-                    ensureConfigLoaded()
-                    bootMasterEnabled = next
-                    val state = currentDeviceState()
-                    stateProvider = null
-                    lastUiState = state
-                    applyState(state, next)
-                }
+                stateApplyJob?.cancel()
+                stateApplyJob =
+                    lifecycleScope.launch {
+                        ensureConfigLoaded()
+                        bootMasterEnabled = next
+                        val state = currentDeviceState().copy(masterEnable = next)
+                        stateProvider = null
+                        lastUiState = state
+                        applyState(state, next)
+                    }
             }
         }
         return START_STICKY
     }
 
     override fun onDestroy() {
+        stateApplyJob?.cancel()
         stopSessionMonitor()
         audioOutputDetector?.stop()
         audioOutputDetector = null
         effectRegistry.releaseGlobal()
         releaseAllSessions()
+        if (::transport.isInitialized) {
+            transport.clearBulkCache()
+        }
         FileLogger.i("Service", "Service destroyed")
         super.onDestroy()
     }
@@ -335,43 +497,48 @@ class ViperService : LifecycleService() {
     private fun openSession(
         sessionId: Int,
         packageName: String,
-    ) {
+    ): Boolean {
         if (!masterEnabled) {
             FileLogger.d(
                 "Service",
                 "Master off: skipping per-app session $sessionId ($packageName)",
             )
-            return
+            return true
         }
         if (globalMode) {
             FileLogger.d(
                 "Service",
                 "Global mode: skipping per-app session $sessionId ($packageName)",
             )
-            return
+            return true
         }
         if (packageName in excludedApps) {
             FileLogger.i(
                 "Service",
                 "Excluded app: skipping session $sessionId ($packageName)",
             )
-            return
+            return true
         }
         if (effectRegistry.isSessionOpen(sessionId)) {
             FileLogger.w("Service", "Session $sessionId already open")
-            return
+            return true
         }
 
-        effectRegistry.openSession(sessionId, packageName) ?: return
+        val (effect, alreadyExisted) = effectRegistry.openSession(sessionId, packageName) ?: return false
 
         lifecycleScope.launch {
-            dispatchFullStateToEffect()
+            ensureConfigLoaded()
+            dispatchFullStateToEffect(targetEffect = if (alreadyExisted) null else effect)
             FileLogger.i("Service", "Applied full state to session $sessionId")
         }
+        return true
     }
 
     private fun closeSession(sessionId: Int) {
         effectRegistry.closeSession(sessionId)
+        if (::transport.isInitialized && effectRegistry.liveEffects().isEmpty()) {
+            transport.clearBulkCache()
+        }
     }
 
     private fun releaseAllSessions() {
@@ -381,69 +548,34 @@ class ViperService : LifecycleService() {
     fun setParam(
         param: Int,
         value: ParamValue,
-    ) = transport.set(param, value)
+    ): Boolean = ::transport.isInitialized && transport.set(param, value)
 
     fun dispatchFullState(state: EffectState) {
         lastUiState = state
-        applyState(state, masterEnabled)
-    }
-
-    fun parseVdc(file: File): Pair<List<FloatArray>, List<FloatArray>>? {
-        try {
-            var coeffs44100: FloatArray? = null
-            var coeffs48000: FloatArray? = null
-            for (line in file.readLines()) {
-                val trimmed = line.trim()
-                when {
-                    trimmed.startsWith("SR_44100:") -> {
-                        coeffs44100 =
-                            trimmed
-                                .removePrefix("SR_44100:")
-                                .split(",")
-                                .map { it.trim().toFloat() }
-                                .toFloatArray()
-                    }
-
-                    trimmed.startsWith("SR_48000:") -> {
-                        coeffs48000 =
-                            trimmed
-                                .removePrefix("SR_48000:")
-                                .split(",")
-                                .map { it.trim().toFloat() }
-                                .toFloatArray()
-                    }
-                }
+        val masterOn = masterEnabled
+        stateApplyJob?.cancel()
+        stateApplyJob =
+            lifecycleScope.launch {
+                ensureConfigLoaded()
+                applyState(state, masterOn)
             }
-
-            val a = coeffs44100
-            val b = coeffs48000
-            if (a == null || b == null || a.isEmpty() || a.size != b.size || a.size % 5 != 0) {
-                FileLogger.w(
-                    "Service",
-                    "DDC coefficient parse failure: ${file.name} 44100=${a?.size} 48000=${b?.size}",
-                )
-                return null
-            }
-            val sec44 = a.toList().chunked(5).map { it.toFloatArray() }
-            val sec48 = b.toList().chunked(5).map { it.toFloatArray() }
-            return sec44 to sec48
-        } catch (e: Exception) {
-            FileLogger.e("Service", "Failed to parse DDC: ${file.name}", e)
-            return null
-        }
     }
 
     fun applyConvolverKernel(
         fileName: String,
         force: Boolean = false,
+        send: (Int, ParamValue) -> Boolean = transport::set,
     ) {
+        if (!::transport.isInitialized) return
         if (!transport.shouldStream(BulkKind.CONVOLVER, fileName, force)) return
-        val sendInts: (Int, Int, Int, Int) -> Unit =
-            { p, a, b, c -> transport.set(p, ParamValue.Ints(intArrayOf(a, b, c))) }
-        val sendFloats: (Int, FloatArray) -> Unit =
-            { p, v -> transport.set(p, ParamValue.Floats(v)) }
+        val sendInts: (Int, Int, Int, Int) -> Boolean =
+            { p, a, b, c -> send(p, ParamValue.Ints(intArrayOf(a, b, c))) }
+        val sendFloats: (Int, FloatArray) -> Boolean =
+            { p, v -> send(p, ParamValue.Floats(v)) }
         if (fileName.isEmpty()) {
-            sendInts(ViperParams.PARAM_CONVOLVER_PREPARE_BUFFER, 0, 0, 1)
+            if (sendInts(ViperParams.PARAM_CONVOLVER_PREPARE_BUFFER, 0, 0, 1)) {
+                transport.markStreamed(BulkKind.CONVOLVER, "")
+            }
             return
         }
         val src = File(File(getExternalFilesDir(null), "Kernel"), fileName)
@@ -453,9 +585,8 @@ class ViperService : LifecycleService() {
         }
 
         try {
-            val decoded = decodedKernelCache[src.absolutePath]
+            val decoded = synchronized(decodedKernelCache) { decodedKernelCache[src.absolutePath] }
             val samples: FloatArray
-            val rawBytes: ByteArray
             val totalFloats: Int
             val channelCount: Int
             val crc: Int
@@ -470,34 +601,46 @@ class ViperService : LifecycleService() {
                 totalFloats = d.samples.size
                 channelCount = d.channels
                 FileLogger.i("Service", "Kernel decoded: $fileName samples=$totalFloats ch=$channelCount")
-                rawBytes =
+                val rawBytes =
                     ByteBuffer
                         .allocate(totalFloats * 4)
                         .order(ByteOrder.LITTLE_ENDIAN)
                         .also { for (f in samples) it.putFloat(f) }
                         .array()
                 crc = CRC32().apply { update(rawBytes) }.value.toInt()
-                decodedKernelCache[src.absolutePath] =
-                    DecodedKernel(samples, rawBytes, totalFloats, channelCount, crc)
+                synchronized(decodedKernelCache) {
+                    decodedKernelCache[src.absolutePath] =
+                        DecodedKernel(samples, rawBytes, totalFloats, channelCount, crc)
+                }
             }
 
-            sendInts(ViperParams.PARAM_CONVOLVER_PREPARE_BUFFER, totalFloats, channelCount, 0)
+            if (!sendInts(ViperParams.PARAM_CONVOLVER_PREPARE_BUFFER, totalFloats, channelCount, 0)) {
+                FileLogger.w("Service", "Kernel prepare failed: $fileName")
+                return
+            }
 
             val maxFloatsPerChunk = 2046
             var offset = 0
             var chunkIndex = 0
             while (offset < totalFloats) {
                 val floatsInChunk = minOf(totalFloats - offset, maxFloatsPerChunk)
-                sendFloats(
-                    ViperParams.PARAM_CONVOLVER_SET_BUFFER,
-                    samples.copyOfRange(offset, offset + floatsInChunk),
-                )
+                if (!sendFloats(
+                        ViperParams.PARAM_CONVOLVER_SET_BUFFER,
+                        samples.copyOfRange(offset, offset + floatsInChunk),
+                    )
+                ) {
+                    FileLogger.w("Service", "Kernel chunk $chunkIndex dispatch failed: $fileName")
+                    return
+                }
                 offset += floatsInChunk
                 chunkIndex++
             }
 
             val kernelId = fileName.hashCode()
-            sendInts(ViperParams.PARAM_CONVOLVER_COMMIT_BUFFER, totalFloats, crc, kernelId)
+            if (!sendInts(ViperParams.PARAM_CONVOLVER_COMMIT_BUFFER, totalFloats, crc, kernelId)) {
+                FileLogger.w("Service", "Kernel commit failed: $fileName")
+                return
+            }
             FileLogger.i("Service", "Kernel streamed: $fileName chunks=$chunkIndex crc=0x${crc.toUInt().toString(16)}")
             transport.markStreamed(BulkKind.CONVOLVER, fileName)
         } catch (e: Exception) {
@@ -505,23 +648,17 @@ class ViperService : LifecycleService() {
         }
     }
 
-    fun applyDdcDevice(
-        name: String,
-        force: Boolean = false,
-    ) {
-        if (!transport.shouldStream(BulkKind.DDC, name, force)) return
-        val sendFloats: (Int, FloatArray) -> Unit =
-            { p, v -> transport.set(p, ParamValue.Floats(v)) }
-        if (name.isEmpty()) {
-            sendFloats(ViperParams.PARAM_DDC_COEFFICIENTS, FloatArray(0))
-            return
-        }
+    fun needsDdcStream(name: String): Boolean =
+        ::transport.isInitialized && transport.shouldStream(BulkKind.DDC, name, force = false)
+
+    private fun loadDdcCoeffs(name: String): FloatArray? {
+        if (name.isEmpty()) return FloatArray(0)
         val file = File(File(getExternalFilesDir(null), "DDC"), "$name.vdc")
         if (!file.exists()) {
             FileLogger.w("Service", "DDC file missing: $name")
-            return
+            return null
         }
-        val parsed = parseVdc(file) ?: return
+        val parsed = parseVdc(file) ?: return null
         val sec44100 = parsed.first
         val sec48000 = parsed.second
         val floatsPerRate = sec44100.size * 5
@@ -529,16 +666,87 @@ class ViperService : LifecycleService() {
         var i = 0
         for (s in sec44100) for (v in s) coeffs[i++] = v
         for (s in sec48000) for (v in s) coeffs[i++] = v
-        sendFloats(ViperParams.PARAM_DDC_COEFFICIENTS, coeffs)
-        transport.markStreamed(BulkKind.DDC, name)
+        return coeffs
     }
 
-    fun probeDriverStatus(): DriverStatus? = transport.probeStatus()
+    private fun isDdcStillWanted(name: String): Boolean {
+        val state = stateProvider?.invoke() ?: lastUiState ?: return true
+        return state.masterEnable && state.ddc.enable && state.ddc.device == name
+    }
+
+    private suspend fun streamDdcInternal(
+        name: String,
+        wasEnabled: Boolean,
+        reEnable: Boolean,
+        force: Boolean,
+        skipDrainDelay: Boolean = false,
+        send: (Int, ParamValue) -> Boolean = transport::set,
+    ): Boolean {
+        if (!::transport.isInitialized) return false
+        if (!transport.shouldStream(BulkKind.DDC, name, force)) {
+            if (reEnable && name.isNotEmpty() && isDdcStillWanted(name)) {
+                send(ViperParams.PARAM_DDC_ENABLE, ParamValue.Bool(true))
+            }
+            return name.isNotEmpty()
+        }
+        val coeffs = loadDdcCoeffs(name)
+        if (coeffs == null) {
+            if (wasEnabled) {
+                send(ViperParams.PARAM_DDC_ENABLE, ParamValue.Bool(false))
+                if (!skipDrainDelay) {
+                    delay(DDC_DRAIN_DELAY_MS.milliseconds)
+                }
+            }
+            if (send(ViperParams.PARAM_DDC_COEFFICIENTS, ParamValue.Floats(FloatArray(0)))) {
+                transport.markStreamed(BulkKind.DDC, "")
+            }
+            return false
+        }
+        if (wasEnabled) {
+            send(ViperParams.PARAM_DDC_ENABLE, ParamValue.Bool(false))
+            if (!skipDrainDelay) {
+                delay(DDC_DRAIN_DELAY_MS.milliseconds)
+            }
+        }
+        if (!send(ViperParams.PARAM_DDC_COEFFICIENTS, ParamValue.Floats(coeffs))) {
+            return false
+        }
+        transport.markStreamed(BulkKind.DDC, name)
+        if (reEnable && name.isNotEmpty() && isDdcStillWanted(name) && currentCoroutineContext().isActive) {
+            send(ViperParams.PARAM_DDC_ENABLE, ParamValue.Bool(true))
+        }
+        return name.isNotEmpty()
+    }
+
+    suspend fun switchDdcDeviceSafely(
+        name: String,
+        wasEnabled: Boolean,
+        reEnable: Boolean,
+        force: Boolean = false,
+    ): Boolean =
+        withContext(Dispatchers.IO) {
+            statePushMutex.withLock {
+                streamDdcInternal(
+                    name = name,
+                    wasEnabled = wasEnabled,
+                    reEnable = reEnable,
+                    force = force,
+                )
+            }
+        }
+
+    fun probeDriverStatus(): DriverStatus? =
+        if (::transport.isInitialized) transport.probeStatus() else null
 
     fun setGlobalMode(enabled: Boolean) {
         globalMode = enabled
         if (!masterEnabled) {
-            applyState(EffectState(), false)
+            stateApplyJob?.cancel()
+            stateApplyJob =
+                lifecycleScope.launch {
+                    ensureConfigLoaded()
+                    applyState(EffectState(), false)
+                }
             return
         }
         if (enabled) {
@@ -547,9 +755,15 @@ class ViperService : LifecycleService() {
         } else {
             effectRegistry.releaseGlobal()
         }
-        lifecycleScope.launch {
-            applyState(currentDeviceState(), true)
+        if (::transport.isInitialized) {
+            transport.clearBulkCache()
         }
+        stateApplyJob?.cancel()
+        stateApplyJob =
+            lifecycleScope.launch {
+                ensureConfigLoaded()
+                applyState(currentDeviceState(), true)
+            }
     }
 
     private fun buildNotification(): Notification {
