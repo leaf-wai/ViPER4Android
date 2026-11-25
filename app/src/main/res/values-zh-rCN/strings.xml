@@ -5,6 +5,11 @@
     <string name="notification_channel_description">当 ViPER4Android 正在处理音频时显示</string>
     <string name="notification_title">ViPER4Android</string>
     <string name="notification_text">音频处理已激活</string>
+    <string name="notification_status_disabled">已关闭</string>
+    <string name="notification_title_format">%1$s · %2$s</string>
+    <string name="notification_session_count">会话 (%1$d)</string>
+    <string name="notification_action_enable">开启音效</string>
+    <string name="notification_action_disable">关闭音效</string>
     <string name="notification_bulk_op_channel_name">批量操作</string>
     <string name="notification_bulk_op_channel_description">批量操作进度</string>
     <string name="qs_tile_master_label">总开关</string>
@@ -232,6 +237,10 @@
     <string name="driver_architecture">架构</string>
     <string name="driver_streaming">音频流</string>
     <string name="driver_sampling_rate">采样率</string>
+    <string name="driver_root_permission">ROOT 权限</string>
+    <string name="driver_root_granted">已授权</string>
+    <string name="driver_root_denied">未授权</string>
+    <string name="driver_root_checking">检测中\u2026</string>
     <string name="status_active">处理中</string>
     <string name="status_inactive">未处理</string>
     <string name="status_unknown">未知</string>
@@ -241,6 +250,7 @@
     <string name="settings_files_section">文件</string>
     <string name="settings_about_section">关于</string>
     <string name="settings_auto_start">开机自启</string>
+    <string name="settings_persistent_notification">通知栏常驻通知</string>
     <string name="settings_aidl_mode">AIDL 模式</string>
     <string name="settings_global_mode">全局模式</string>
     <string name="settings_excluded_apps">排除的应用</string>
@@ -248,7 +258,11 @@
     <string name="settings_import_kernel">导入内核</string>
     <string name="settings_import_vdc">导入 VDC</string>
     <string name="settings_auto_start_desc">开机时启动音频服务</string>
+    <string name="settings_persistent_notification_desc">在通知栏实时显示驱动运行状态</string>
+    <string name="settings_notification_permission_denied">需要授予通知权限才能开启常驻通知</string>
     <string name="settings_global_mode_desc">全局应用效果</string>
+    <string name="settings_session_mode_requires_root">会话模式需要 ROOT 权限或系统特权权限</string>
+    <string name="settings_global_mode_fallback_toast">未检测到 ROOT 权限，已自动切换为全局模式</string>
     <string name="settings_excluded_apps_desc">为所选应用跳过音频处理会话</string>
     <string name="settings_debug_mode">调试模式</string>
     <string name="settings_debug_mode_desc">开启后显示调试日志入口</string>
@@ -378,6 +392,10 @@
     <string name="common_collapse_all">全部收起</string>
     <string name="common_expand_all">全部展开</string>
     <string name="common_refresh">刷新</string>
+    <string name="common_pull_to_refresh">下拉刷新</string>
+    <string name="common_release_to_refresh">释放立即刷新</string>
+    <string name="common_refreshing">正在刷新\u2026</string>
+    <string name="common_refresh_complete">刷新成功</string>
     <string name="common_more">更多</string>
 
     <!-- Overview Tab -->
@@ -442,4 +460,41 @@
     <string name="files_delete_selected_title">删除所选文件</string>
     <string name="files_delete_selected_confirm">确定删除所选的 %1$d 个文件？此操作无法撤销。</string>
     <string name="files_deleted_count_toast">已删除 %1$d 个文件</string>
+
+    <!-- Audio Sessions Management -->
+    <string name="overview_session_management">会话管理</string>
+    <string name="overview_sessions_processing_summary">正在处理 %1$d 个音频会话</string>
+    <string name="overview_sessions_active_summary">正在处理 %1$d / %2$d 个会话</string>
+    <string name="overview_sessions_empty_summary">暂无活跃音频流</string>
+    <string name="overview_sessions_master_off_summary">总开关未开启</string>
+    <string name="sessions_title">会话管理</string>
+    <string name="sessions_status_processing">处理中</string>
+    <string name="sessions_status_disabled">已关闭</string>
+    <string name="sessions_id_badge">会话 #%1$d</string>
+    <string name="sessions_unknown_app">未知应用</string>
+    <string name="sessions_uid_format">UID %1$s</string>
+    <string name="sessions_usage_media">媒体</string>
+    <string name="sessions_usage_game">游戏</string>
+    <string name="sessions_usage_navigation">导航</string>
+    <string name="sessions_usage_voice">语音</string>
+    <string name="sessions_usage_alarm">闹钟</string>
+    <string name="sessions_usage_notification">通知</string>
+    <string name="sessions_usage_assistant">助手</string>
+    <string name="sessions_empty_title">暂无活跃会话</string>
+    <string name="sessions_empty_desc">播放音乐、视频或游戏音频后，正在处理的音频流将自动显示在此处</string>
+    <string name="sessions_empty_master_off_title">总开关未开启</string>
+    <string name="sessions_empty_master_off_desc">开启总开关并播放音频后，活跃会话将显示在此处</string>
+    <string name="sessions_empty_global_mode_title">当前处于全局模式</string>
+    <string name="sessions_empty_global_mode_desc">会话管理仅在会话模式下可用，请在设置中关闭全局模式以按应用管理音频流</string>
+    <string name="sessions_action_enable">开启</string>
+    <string name="sessions_action_disable">关闭</string>
+    <string name="sessions_action_exclude">排除应用</string>
+    <string name="sessions_exclude_single_title">排除应用</string>
+    <string name="sessions_exclude_single_confirm">确定将「%1$s」加入排除应用列表并停止处理其音频会话？</string>
+    <string name="sessions_exclude_multi_title">排除所选应用</string>
+    <string name="sessions_exclude_multi_confirm">确定将所选的 %1$d 个应用加入排除应用列表并停止处理其音频会话？</string>
+    <string name="sessions_excluded_single_toast">已排除：%1$s</string>
+    <string name="sessions_excluded_multi_toast">已排除 %1$d 个应用</string>
+    <string name="sessions_enabled_count_toast">已开启 %1$d 个会话</string>
+    <string name="sessions_disabled_count_toast">已关闭 %1$d 个会话</string>
 </resources>

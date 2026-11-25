@@ -1,6 +1,10 @@
 package com.llsl.viper4android.ui.screens.main
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -39,8 +43,10 @@ import androidx.compose.material.icons.rounded.Insights
 import androidx.compose.material.icons.rounded.LayersClear
 import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material.icons.rounded.Psychology
+import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material.icons.rounded.SettingsInputComponent
 import androidx.compose.material.icons.rounded.SpatialAudio
@@ -55,20 +61,25 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -79,6 +90,8 @@ import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import com.llsl.viper4android.R
 import com.llsl.viper4android.audio.AudioDevice
+import com.llsl.viper4android.audio.AudioSessionInfo
+import com.llsl.viper4android.audio.AudioSessionMonitor
 import com.llsl.viper4android.effect.EffectState
 import com.llsl.viper4android.ui.components.AdaptiveTopAppBar
 import com.llsl.viper4android.ui.components.BlurredBar
@@ -91,10 +104,10 @@ import com.llsl.viper4android.ui.components.rememberBlurBackdrop
 import com.llsl.viper4android.ui.screens.settings.UpdateDialog
 import com.llsl.viper4android.ui.screens.status.DriverStatusDialog
 import com.llsl.viper4android.ui.theme.StatusColors
+import com.llsl.viper4android.ui.util.ImmutableList
 import com.llsl.viper4android.ui.util.WideContentBox
 import com.llsl.viper4android.ui.util.rememberIsWideScreen
 import com.llsl.viper4android.ui.util.rememberPlatformToast
-import com.llsl.viper4android.utils.RootShell
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -131,6 +144,7 @@ fun MainScreen(
     onOpenEqScreen: () -> Unit = {},
     onOpenPresets: () -> Unit = {},
     onOpenDevices: () -> Unit = {},
+    onOpenSessions: () -> Unit = {},
     onOpenExcludedApps: () -> Unit = {},
     onOpenKernelFiles: () -> Unit = {},
     onOpenVdcFiles: () -> Unit = {},
@@ -139,24 +153,38 @@ fun MainScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val driverStatus by viewModel.driverStatus.collectAsStateWithLifecycle()
     val autoStart by viewModel.autoStartEnabled.collectAsStateWithLifecycle()
+    val persistentNotification by viewModel.persistentNotificationEnabled.collectAsStateWithLifecycle()
     val globalMode by viewModel.globalModeEnabled.collectAsStateWithLifecycle()
     val aidlMode by viewModel.aidlModeEnabled.collectAsStateWithLifecycle()
     val debugMode by viewModel.debugModeEnabled.collectAsStateWithLifecycle()
     val updateState by viewModel.updateState.collectAsStateWithLifecycle()
     val excludedApps by viewModel.excludedApps.collectAsStateWithLifecycle()
+    val activeSessions by viewModel.activeSessions.collectAsStateWithLifecycle()
     val kernelFileCount by viewModel.kernelFileList.collectAsStateWithLifecycle()
     val vdcFileCount by viewModel.vdcFileList.collectAsStateWithLifecycle()
+
+    val globalModeFallbackNotice by viewModel.globalModeFallbackNotice.collectAsStateWithLifecycle()
 
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
         viewModel.saveSettingsOnBackground()
     }
 
     var showDriverStatusDialog by rememberSaveable { mutableStateOf(false) }
+    var pendingEffectJump by remember { mutableStateOf<EffectJumpRequest?>(null) }
+    var effectJumpCounter by remember { mutableLongStateOf(0L) }
 
     val context = LocalContext.current
     val platform = rememberPlatformToast()
     val scope = rememberCoroutineScope()
     val expandController = rememberEffectExpandController()
+
+    val globalModeFallbackToast = stringResource(R.string.settings_global_mode_fallback_toast)
+    LaunchedEffect(globalModeFallbackNotice) {
+        if (globalModeFallbackNotice) {
+            viewModel.consumeGlobalModeFallbackNotice()
+            platform.showToast(globalModeFallbackToast, long = true)
+        }
+    }
 
     val isWideScreen = rememberIsWideScreen()
     val pagerState = rememberPagerState(pageCount = { 3 })
@@ -214,19 +242,26 @@ fun MainScreen(
                     driverStatus = driverStatus,
                     aidlMode = aidlMode,
                     globalMode = globalMode,
+                    activeSessions = activeSessions,
                     viewModel = viewModel,
                     bottomPadding = bottomPadding,
-                    onJumpToEffects = {
+                    onJumpToEffects = { sectionKey ->
+                        if (sectionKey != null) {
+                            effectJumpCounter += 1L
+                            pendingEffectJump = EffectJumpRequest(sectionKey, effectJumpCounter)
+                        }
                         scope.launch { pagerState.animateScrollToPage(1) }
                     },
                     onShowDriverDialog = { showDriverStatusDialog = true },
-                    onOpenDevices = onOpenDevices
+                    onOpenDevices = onOpenDevices,
+                    onOpenSessions = onOpenSessions
                 )
 
                 1 -> EffectsTab(
                     state = state,
                     viewModel = viewModel,
                     expandController = expandController,
+                    jumpRequest = pendingEffectJump,
                     bottomPadding = bottomPadding,
                     onOpenEqScreen = onOpenEqScreen,
                     onOpenPresets = onOpenPresets,
@@ -236,6 +271,7 @@ fun MainScreen(
 
                 2 -> SettingsTab(
                     autoStart = autoStart,
+                    persistentNotification = persistentNotification,
                     globalMode = globalMode,
                     debugMode = debugMode,
                     excludedApps = excludedApps,
@@ -374,11 +410,13 @@ private fun OverviewTab(
     driverStatus: DriverStatus,
     aidlMode: Boolean,
     globalMode: Boolean,
+    activeSessions: ImmutableList<AudioSessionInfo>,
     viewModel: MainViewModel,
     bottomPadding: Dp,
-    onJumpToEffects: () -> Unit,
+    onJumpToEffects: (String?) -> Unit,
     onShowDriverDialog: () -> Unit,
     onOpenDevices: () -> Unit,
+    onOpenSessions: () -> Unit,
 ) {
     val scrollBehavior = MiuixScrollBehavior()
     val backdrop = rememberBlurBackdrop()
@@ -387,6 +425,7 @@ private fun OverviewTab(
 
     val isSpeaker = state.activeDeviceId == AudioDevice.ID_SPEAKER
     val enabledEffects = remember(state) { collectEnabledEffects(state) }
+    val enabledSessionCount = remember(activeSessions) { activeSessions.count { it.enabled } }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -435,56 +474,97 @@ private fun OverviewTab(
                 groupedCardItems(
                     keyPrefix = "overview_master",
                     outerBottomPadding = 6.dp,
-                    items = listOf(
-                        CardItem("master_switch") {
-                            SwitchPreference(
-                                title = stringResource(R.string.master_enable),
-                                summary = if (state.masterEnable) {
-                                    stringResource(R.string.overview_master_summary_on)
-                                } else {
-                                    stringResource(R.string.overview_master_summary_off)
-                                },
-                                startAction = {
-                                    Icon(
-                                        imageVector = Icons.Rounded.PowerSettingsNew,
-                                        contentDescription = stringResource(R.string.master_enable),
-                                        modifier = Modifier.padding(end = 6.dp),
-                                        tint = MiuixTheme.colorScheme.onBackground
-                                    )
-                                },
-                                checked = state.masterEnable,
-                                onCheckedChange = viewModel::setMasterEnabled
-                            )
-                        },
-                        CardItem("current_device") {
-                            ArrowPreference(
-                                title = stringResource(R.string.overview_current_device),
-                                summary = if (isSpeaker) {
-                                    stringResource(R.string.device_mode_speaker)
-                                } else {
-                                    stringResource(R.string.device_mode_headphone)
-                                },
-                                startAction = {
-                                    Icon(
-                                        imageVector = if (isSpeaker) Icons.Rounded.Speaker else Icons.Rounded.Headphones,
-                                        contentDescription = stringResource(R.string.overview_current_device),
-                                        modifier = Modifier.padding(end = 6.dp),
-                                        tint = MiuixTheme.colorScheme.onBackground
-                                    )
-                                },
-                                endActions = {
-                                    StatusBadge(
-                                        text = state.activeDeviceName.ifEmpty {
-                                            if (isSpeaker) stringResource(R.string.device_type_speaker)
-                                            else stringResource(R.string.device_mode_headphone)
+                    items = buildList {
+                        add(
+                            CardItem("master_switch") {
+                                SwitchPreference(
+                                    title = stringResource(R.string.master_enable),
+                                    summary = if (state.masterEnable) {
+                                        stringResource(R.string.overview_master_summary_on)
+                                    } else {
+                                        stringResource(R.string.overview_master_summary_off)
+                                    },
+                                    startAction = {
+                                        Icon(
+                                            imageVector = Icons.Rounded.PowerSettingsNew,
+                                            contentDescription = stringResource(R.string.master_enable),
+                                            modifier = Modifier.padding(end = 6.dp),
+                                            tint = MiuixTheme.colorScheme.onBackground
+                                        )
+                                    },
+                                    checked = state.masterEnable,
+                                    onCheckedChange = viewModel::setMasterEnabled
+                                )
+                            }
+                        )
+                        add(
+                            CardItem("current_device") {
+                                ArrowPreference(
+                                    title = stringResource(R.string.overview_current_device),
+                                    summary = if (isSpeaker) {
+                                        stringResource(R.string.device_mode_speaker)
+                                    } else {
+                                        stringResource(R.string.device_mode_headphone)
+                                    },
+                                    startAction = {
+                                        Icon(
+                                            imageVector = if (isSpeaker) Icons.Rounded.Speaker else Icons.Rounded.Headphones,
+                                            contentDescription = stringResource(R.string.overview_current_device),
+                                            modifier = Modifier.padding(end = 6.dp),
+                                            tint = MiuixTheme.colorScheme.onBackground
+                                        )
+                                    },
+                                    endActions = {
+                                        StatusBadge(
+                                            text = state.activeDeviceName.ifEmpty {
+                                                if (isSpeaker) stringResource(R.string.device_type_speaker)
+                                                else stringResource(R.string.device_mode_headphone)
+                                            },
+                                            color = MiuixTheme.colorScheme.primary
+                                        )
+                                    },
+                                    onClick = onOpenDevices
+                                )
+                            }
+                        )
+                        if (!globalMode) {
+                            add(
+                                CardItem("active_sessions") {
+                                    val sessionSummary = when {
+                                        !state.masterEnable -> stringResource(R.string.overview_sessions_master_off_summary)
+                                        activeSessions.isEmpty() -> stringResource(R.string.overview_sessions_empty_summary)
+                                        enabledSessionCount == activeSessions.size ->
+                                            stringResource(R.string.overview_sessions_processing_summary, enabledSessionCount)
+                                        else ->
+                                            stringResource(
+                                                R.string.overview_sessions_active_summary,
+                                                enabledSessionCount,
+                                                activeSessions.size
+                                            )
+                                    }
+                                    ArrowPreference(
+                                        title = stringResource(R.string.overview_session_management),
+                                        summary = sessionSummary,
+                                        startAction = {
+                                            Icon(
+                                                imageVector = Icons.Rounded.GraphicEq,
+                                                contentDescription = stringResource(R.string.overview_session_management),
+                                                modifier = Modifier.padding(end = 6.dp),
+                                                tint = MiuixTheme.colorScheme.onBackground
+                                            )
                                         },
-                                        color = MiuixTheme.colorScheme.primary
+                                        endActions = {
+                                            StatusBadge(
+                                                text = enabledSessionCount.toString(),
+                                                color = MiuixTheme.colorScheme.primary
+                                            )
+                                        },
+                                        onClick = onOpenSessions
                                     )
-                                },
-                                onClick = onOpenDevices
+                                }
                             )
                         }
-                    )
+                    }
                 )
 
                 item(key = "overview_active_effects_title") {
@@ -513,7 +593,7 @@ private fun OverviewTab(
                                             tint = MiuixTheme.colorScheme.onBackground
                                         )
                                     },
-                                    onClick = onJumpToEffects
+                                    onClick = { onJumpToEffects(null) }
                                 )
                             }
                         )
@@ -522,8 +602,8 @@ private fun OverviewTab(
                     groupedCardItems(
                         keyPrefix = "overview_active_effects",
                         outerBottomPadding = 12.dp,
-                        items = enabledEffects.mapIndexed { index, effect ->
-                            CardItem("active_$index") {
+                        items = enabledEffects.map { effect ->
+                            CardItem("active_${effect.sectionKey}") {
                                 ArrowPreference(
                                     title = stringResource(effect.titleRes),
                                     startAction = {
@@ -540,7 +620,7 @@ private fun OverviewTab(
                                             color = StatusColors.healthy
                                         )
                                     },
-                                    onClick = onJumpToEffects
+                                    onClick = { onJumpToEffects(effect.sectionKey) }
                                 )
                             }
                         }
@@ -560,6 +640,7 @@ private fun EffectsTab(
     state: EffectState,
     viewModel: MainViewModel,
     expandController: EffectExpandController,
+    jumpRequest: EffectJumpRequest?,
     bottomPadding: Dp,
     onOpenEqScreen: () -> Unit,
     onOpenPresets: () -> Unit,
@@ -572,6 +653,17 @@ private fun EffectsTab(
     val barColor = if (blurActive) Color.Transparent else MiuixTheme.colorScheme.surface
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
+    val sectionHeaderIndices = remember { mutableMapOf<String, Int>() }
+    val scrollTopOffsetPx = with(LocalDensity.current) { 12.dp.roundToPx() }
+
+    LaunchedEffect(jumpRequest) {
+        val request = jumpRequest ?: return@LaunchedEffect
+        expandController.expand(request.sectionKey, scope)
+        // 等待一帧确保 LazyListScope 已更新各音效卡片的最新索引
+        withFrameNanos {}
+        val targetIndex = sectionHeaderIndices[request.sectionKey] ?: return@LaunchedEffect
+        listState.animateScrollToItem(index = targetIndex, scrollOffset = -scrollTopOffsetPx)
+    }
 
     val isSpeaker = state.activeDeviceId == AudioDevice.ID_SPEAKER
     val allCollapsed = expandController.isAllCollapsed
@@ -681,7 +773,12 @@ private fun EffectsTab(
                     viewModel = viewModel,
                     controller = expandController,
                     scope = scope,
-                    onOpenEqScreen = onOpenEqScreen
+                    onOpenEqScreen = onOpenEqScreen,
+                    startIndex = 2,
+                    onHeaderIndices = { indices ->
+                        sectionHeaderIndices.clear()
+                        sectionHeaderIndices.putAll(indices)
+                    }
                 )
 
                 item(key = "effects_bottom_spacer") {
@@ -695,6 +792,7 @@ private fun EffectsTab(
 @Composable
 private fun SettingsTab(
     autoStart: Boolean,
+    persistentNotification: Boolean,
     globalMode: Boolean,
     debugMode: Boolean,
     excludedApps: Set<String>,
@@ -713,7 +811,33 @@ private fun SettingsTab(
     val blurActive = backdrop != null
     val barColor = if (blurActive) Color.Transparent else MiuixTheme.colorScheme.surface
     val context = LocalContext.current
+    val platform = rememberPlatformToast()
     val scope = rememberCoroutineScope()
+    var checkingSessionPermission by remember { mutableStateOf(false) }
+    val sessionModeRequiresRootToast = stringResource(R.string.settings_session_mode_requires_root)
+    val notificationPermissionDeniedToast = stringResource(R.string.settings_notification_permission_denied)
+
+    val hasNotificationPermission = {
+        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED &&
+            NotificationManagerCompat.from(context).areNotificationsEnabled()
+    }
+
+    val notificationPermissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted && NotificationManagerCompat.from(context).areNotificationsEnabled()) {
+                viewModel.togglePersistentNotification(true)
+            } else {
+                platform.showToast(notificationPermissionDeniedToast, long = false)
+            }
+        }
+
+    // 返回前台时若系统通知权限已被外部撤销，同步关闭开关状态
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        if (persistentNotification && !hasNotificationPermission()) {
+            viewModel.togglePersistentNotification(false)
+        }
+    }
 
     val isCheckingUpdate = updateState.checking
     val appVersionName = remember(context) {
@@ -777,13 +901,57 @@ private fun SettingsTab(
                             }
                         )
                         add(
+                            CardItem("persistent_notification") {
+                                SwitchPreference(
+                                    title = stringResource(R.string.settings_persistent_notification),
+                                    summary = stringResource(R.string.settings_persistent_notification_desc),
+                                    startAction = {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Notifications,
+                                            contentDescription = stringResource(R.string.settings_persistent_notification),
+                                            modifier = Modifier.padding(end = 6.dp),
+                                            tint = MiuixTheme.colorScheme.onBackground
+                                        )
+                                    },
+                                    checked = persistentNotification,
+                                    onCheckedChange = { enabled ->
+                                        if (!enabled) {
+                                            viewModel.togglePersistentNotification(false)
+                                        } else {
+                                            val permGranted =
+                                                ContextCompat.checkSelfPermission(
+                                                    context,
+                                                    Manifest.permission.POST_NOTIFICATIONS,
+                                                ) == PackageManager.PERMISSION_GRANTED
+                                            when {
+                                                !permGranted -> {
+                                                    notificationPermissionLauncher.launch(
+                                                        Manifest.permission.POST_NOTIFICATIONS,
+                                                    )
+                                                }
+                                                !NotificationManagerCompat.from(context).areNotificationsEnabled() -> {
+                                                    platform.showToast(
+                                                        notificationPermissionDeniedToast,
+                                                        long = false,
+                                                    )
+                                                }
+                                                else -> {
+                                                    viewModel.togglePersistentNotification(true)
+                                                }
+                                            }
+                                        }
+                                    }
+                                )
+                            }
+                        )
+                        add(
                             CardItem("global_mode") {
                                 SwitchPreference(
                                     title = stringResource(R.string.settings_global_mode),
                                     summary = stringResource(R.string.settings_global_mode_desc),
                                     startAction = {
                                         Icon(
-                                            imageVector = Icons.Rounded.AdminPanelSettings,
+                                            imageVector = Icons.Rounded.Public,
                                             contentDescription = stringResource(R.string.settings_global_mode),
                                             modifier = Modifier.padding(end = 6.dp),
                                             tint = MiuixTheme.colorScheme.onBackground
@@ -792,16 +960,25 @@ private fun SettingsTab(
                                     checked = globalMode,
                                     onCheckedChange = { enabled ->
                                         if (enabled) {
+                                            // 全局模式通过 session 0 生效，无需 Root 或特权权限
+                                            viewModel.toggleGlobalMode(true)
+                                        } else if (!checkingSessionPermission) {
+                                            // 关闭全局模式切回会话模式时，需具备特权应用权限或 Root 权限
+                                            checkingSessionPermission = true
                                             scope.launch {
-                                                val granted = withContext(Dispatchers.IO) {
-                                                    RootShell.isRootAvailable()
+                                                val granted = try {
+                                                    withContext(Dispatchers.IO) {
+                                                        AudioSessionMonitor.canUseSessionMode(context)
+                                                    }
+                                                } finally {
+                                                    checkingSessionPermission = false
                                                 }
                                                 if (granted) {
-                                                    viewModel.toggleGlobalMode(true)
+                                                    viewModel.toggleGlobalMode(false)
+                                                } else {
+                                                    platform.showToast(sessionModeRequiresRootToast, long = false)
                                                 }
                                             }
-                                        } else {
-                                            viewModel.toggleGlobalMode(false)
                                         }
                                     }
                                 )
@@ -982,35 +1159,42 @@ private fun SettingsTab(
 }
 
 @Immutable
+private data class EffectJumpRequest(
+    val sectionKey: String,
+    val id: Long,
+)
+
+@Immutable
 private data class EnabledEffectItem(
+    val sectionKey: String,
     val titleRes: Int,
     val icon: ImageVector,
 )
 
 private fun collectEnabledEffects(state: EffectState): List<EnabledEffectItem> {
     return buildList {
-        if (state.playbackGainControl.enable) add(EnabledEffectItem(R.string.section_agc, Icons.AutoMirrored.Rounded.TrendingUp))
-        if (state.lufs.enable) add(EnabledEffectItem(R.string.section_lufs_targeting, Icons.Rounded.VerticalAlignCenter))
-        if (state.fetCompressor.enable) add(EnabledEffectItem(R.string.section_fet_compressor, Icons.Rounded.Compress))
-        if (state.multibandCompressor.enable) add(EnabledEffectItem(R.string.section_multiband_compressor, Icons.Rounded.SettingsInputComponent))
-        if (state.ddc.enable) add(EnabledEffectItem(R.string.section_ddc, Icons.Rounded.SpeakerPhone))
-        if (state.spectrumExtension.enable) add(EnabledEffectItem(R.string.section_spectrum_extension, Icons.Rounded.Waves))
-        if (state.eq.enable) add(EnabledEffectItem(R.string.section_equalizer, Icons.Rounded.Equalizer))
-        if (state.dynamicEq.enable) add(EnabledEffectItem(R.string.section_dynamic_eq, Icons.Rounded.Insights))
-        if (state.convolver.enable) add(EnabledEffectItem(R.string.section_convolver, Icons.Rounded.BlurCircular))
-        if (state.fieldSurround.enable) add(EnabledEffectItem(R.string.section_field_surround, Icons.Rounded.SurroundSound))
-        if (state.diffSurround.enable) add(EnabledEffectItem(R.string.section_diff_surround, Icons.Rounded.SpatialAudio))
-        if (state.stereoImager.enable) add(EnabledEffectItem(R.string.section_stereo_imager, Icons.Rounded.AspectRatio))
-        if (state.headphoneSurround.enable) add(EnabledEffectItem(R.string.section_headphone_surround, Icons.Rounded.Headphones))
-        if (state.reverb.enable) add(EnabledEffectItem(R.string.section_reverb, Icons.Rounded.BlurOn))
-        if (state.dynamicSystem.enable) add(EnabledEffectItem(R.string.section_dynamic_system, Icons.Rounded.CandlestickChart))
-        if (state.tubeSimulator.enable) add(EnabledEffectItem(R.string.section_tube_simulator, Icons.Rounded.MusicNote))
-        if (state.psychoacousticBass.enable) add(EnabledEffectItem(R.string.section_psycho_bass, Icons.Rounded.Psychology))
-        if (state.bass.enable) add(EnabledEffectItem(R.string.section_viper_bass, Icons.Rounded.GraphicEq))
-        if (state.bassMono.enable) add(EnabledEffectItem(R.string.section_viper_bass_mono, Icons.Rounded.GraphicEq))
-        if (state.clarity.enable) add(EnabledEffectItem(R.string.section_viper_clarity, Icons.Rounded.Hearing))
-        if (state.cure.enable) add(EnabledEffectItem(R.string.section_cure, Icons.Rounded.HealthAndSafety))
-        if (state.analogX.enable) add(EnabledEffectItem(R.string.section_analogx, Icons.Rounded.Memory))
-        if (state.speakerCorrection.enable) add(EnabledEffectItem(R.string.section_speaker_optimization, Icons.Rounded.SpeakerPhone))
+        if (state.playbackGainControl.enable) add(EnabledEffectItem("playbackGain", R.string.section_agc, Icons.AutoMirrored.Rounded.TrendingUp))
+        if (state.lufs.enable) add(EnabledEffectItem("lufsTargeting", R.string.section_lufs_targeting, Icons.Rounded.VerticalAlignCenter))
+        if (state.fetCompressor.enable) add(EnabledEffectItem("fetCompressor", R.string.section_fet_compressor, Icons.Rounded.Compress))
+        if (state.multibandCompressor.enable) add(EnabledEffectItem("multibandComp", R.string.section_multiband_compressor, Icons.Rounded.SettingsInputComponent))
+        if (state.ddc.enable) add(EnabledEffectItem("ddc", R.string.section_ddc, Icons.Rounded.SpeakerPhone))
+        if (state.spectrumExtension.enable) add(EnabledEffectItem("vse", R.string.section_spectrum_extension, Icons.Rounded.Waves))
+        if (state.eq.enable) add(EnabledEffectItem("eq", R.string.section_equalizer, Icons.Rounded.Equalizer))
+        if (state.dynamicEq.enable) add(EnabledEffectItem("dynamicEq", R.string.section_dynamic_eq, Icons.Rounded.Insights))
+        if (state.convolver.enable) add(EnabledEffectItem("convolver", R.string.section_convolver, Icons.Rounded.BlurCircular))
+        if (state.fieldSurround.enable) add(EnabledEffectItem("fieldSurround", R.string.section_field_surround, Icons.Rounded.SurroundSound))
+        if (state.diffSurround.enable) add(EnabledEffectItem("diffSurround", R.string.section_diff_surround, Icons.Rounded.SpatialAudio))
+        if (state.stereoImager.enable) add(EnabledEffectItem("stereoImager", R.string.section_stereo_imager, Icons.Rounded.AspectRatio))
+        if (state.headphoneSurround.enable) add(EnabledEffectItem("vhe", R.string.section_headphone_surround, Icons.Rounded.Headphones))
+        if (state.reverb.enable) add(EnabledEffectItem("reverb", R.string.section_reverb, Icons.Rounded.BlurOn))
+        if (state.dynamicSystem.enable) add(EnabledEffectItem("dynamicSystem", R.string.section_dynamic_system, Icons.Rounded.CandlestickChart))
+        if (state.tubeSimulator.enable) add(EnabledEffectItem("tubeSimulator", R.string.section_tube_simulator, Icons.Rounded.MusicNote))
+        if (state.psychoacousticBass.enable) add(EnabledEffectItem("psychoBass", R.string.section_psycho_bass, Icons.Rounded.Psychology))
+        if (state.bass.enable) add(EnabledEffectItem("viperBass", R.string.section_viper_bass, Icons.Rounded.GraphicEq))
+        if (state.bassMono.enable) add(EnabledEffectItem("viperBassMono", R.string.section_viper_bass_mono, Icons.Rounded.GraphicEq))
+        if (state.clarity.enable) add(EnabledEffectItem("viperClarity", R.string.section_viper_clarity, Icons.Rounded.Hearing))
+        if (state.cure.enable) add(EnabledEffectItem("cure", R.string.section_cure, Icons.Rounded.HealthAndSafety))
+        if (state.analogX.enable) add(EnabledEffectItem("analogX", R.string.section_analogx, Icons.Rounded.Memory))
+        if (state.speakerCorrection.enable) add(EnabledEffectItem("speakerOpt", R.string.section_speaker_optimization, Icons.Rounded.SpeakerPhone))
     }
 }

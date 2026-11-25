@@ -206,6 +206,12 @@ class EffectExpandController(
         }
     }
 
+    fun expand(key: String, scope: CoroutineScope) {
+        if (key in ALL_EXPANDABLE_EFFECT_KEYS && !isTargetExpanded(key)) {
+            toggle(key, scope)
+        }
+    }
+
     fun collapseAll(scope: CoroutineScope) {
         val toCollapse = expandedGroups.filter { isTargetExpanded(it) }
         toCollapse.forEach { key -> toggle(key, scope) }
@@ -300,7 +306,7 @@ fun LazyListScope.effectSectionItems(
     hasEnableSwitch: Boolean = true,
     toggleOnly: Boolean = false,
     rows: List<CardItem> = emptyList()
-) {
+): Int {
     val isTargetExpanded = !toggleOnly && controller.isTargetExpanded(sectionKey)
     val shouldEmitRows = !toggleOnly && controller.shouldEmitRows(sectionKey) && rows.isNotEmpty()
     val progressState = controller.progressStateOf(sectionKey)
@@ -422,6 +428,7 @@ fun LazyListScope.effectSectionItems(
             }
         }
     }
+    return 1 + if (shouldEmitRows) rows.size else 0
 }
 
 @Composable
@@ -3059,9 +3066,41 @@ fun LazyListScope.allEffectSectionsItems(
     viewModel: MainViewModel,
     controller: EffectExpandController,
     scope: CoroutineScope,
-    onOpenEqScreen: (() -> Unit)? = null
+    onOpenEqScreen: (() -> Unit)? = null,
+    startIndex: Int = 0,
+    onHeaderIndices: ((Map<String, Int>) -> Unit)? = null
 ) {
-    effectSectionItems(
+    var cursor = startIndex
+    val indices = if (onHeaderIndices != null) LinkedHashMap<String, Int>(24) else null
+
+    fun emitSection(
+        sectionKey: String,
+        titleRes: Int,
+        descriptionRes: Int,
+        enabled: Boolean,
+        onEnabledChange: (Boolean) -> Unit,
+        icon: ImageVector? = null,
+        hasEnableSwitch: Boolean = true,
+        toggleOnly: Boolean = false,
+        rows: List<CardItem> = emptyList()
+    ) {
+        indices?.put(sectionKey, cursor)
+        cursor += effectSectionItems(
+            sectionKey = sectionKey,
+            titleRes = titleRes,
+            descriptionRes = descriptionRes,
+            enabled = enabled,
+            onEnabledChange = onEnabledChange,
+            controller = controller,
+            scope = scope,
+            icon = icon,
+            hasEnableSwitch = hasEnableSwitch,
+            toggleOnly = toggleOnly,
+            rows = rows
+        )
+    }
+
+    emitSection(
         sectionKey = "masterLimiter",
         titleRes = R.string.section_master_limiter,
         descriptionRes = R.string.effect_desc_master_limiter,
@@ -3069,52 +3108,42 @@ fun LazyListScope.allEffectSectionsItems(
         enabled = true,
         onEnabledChange = {},
         hasEnableSwitch = false,
-        controller = controller,
-        scope = scope,
         rows = masterLimiterCardItems(state, viewModel)
     )
-    effectSectionItems(
+    emitSection(
         sectionKey = "playbackGain",
         titleRes = R.string.section_agc,
         descriptionRes = R.string.effect_desc_playback_gain_control,
         icon = Icons.AutoMirrored.Rounded.TrendingUp,
         enabled = state.playbackGainControl.enable,
         onEnabledChange = viewModel::setPlaybackGainControlEnabled,
-        controller = controller,
-        scope = scope,
         rows = playbackGainCardItems(state, viewModel)
     )
-    effectSectionItems(
+    emitSection(
         sectionKey = "lufsTargeting",
         titleRes = R.string.section_lufs_targeting,
         descriptionRes = R.string.effect_desc_lufs_targeting,
         icon = Icons.Rounded.VerticalAlignCenter,
         enabled = state.lufs.enable,
         onEnabledChange = viewModel::setLufsEnabled,
-        controller = controller,
-        scope = scope,
         rows = lufsTargetingCardItems(state, viewModel)
     )
-    effectSectionItems(
+    emitSection(
         sectionKey = "fetCompressor",
         titleRes = R.string.section_fet_compressor,
         descriptionRes = R.string.effect_desc_fet_compressor,
         icon = Icons.Rounded.Compress,
         enabled = state.fetCompressor.enable,
         onEnabledChange = viewModel::setFetCompressorEnabled,
-        controller = controller,
-        scope = scope,
         rows = fetCompressorCardItems(state, viewModel)
     )
-    effectSectionItems(
+    emitSection(
         sectionKey = "multibandComp",
         titleRes = R.string.section_multiband_compressor,
         descriptionRes = R.string.effect_desc_multiband_compressor,
         icon = Icons.Rounded.SettingsInputComponent,
         enabled = state.multibandCompressor.enable,
         onEnabledChange = viewModel::setMultibandCompressorEnabled,
-        controller = controller,
-        scope = scope,
         rows = multibandCompressorCardItems(
             state = state,
             viewModel = viewModel,
@@ -3122,48 +3151,40 @@ fun LazyListScope.allEffectSectionsItems(
             onSelectTab = { controller.multibandSelectedTab.intValue = it }
         )
     )
-    effectSectionItems(
+    emitSection(
         sectionKey = "ddc",
         titleRes = R.string.section_ddc,
         descriptionRes = R.string.effect_desc_ddc,
         icon = Icons.Rounded.SpeakerPhone,
         enabled = state.ddc.enable,
         onEnabledChange = viewModel::setDdcEnabled,
-        controller = controller,
-        scope = scope,
         rows = ddcCardItems(state, viewModel)
     )
-    effectSectionItems(
+    emitSection(
         sectionKey = "vse",
         titleRes = R.string.section_spectrum_extension,
         descriptionRes = R.string.effect_desc_spectrum_extension,
         icon = Icons.Rounded.Waves,
         enabled = state.spectrumExtension.enable,
         onEnabledChange = viewModel::setSpectrumExtensionEnabled,
-        controller = controller,
-        scope = scope,
         rows = spectrumExtensionCardItems(state, viewModel)
     )
-    effectSectionItems(
+    emitSection(
         sectionKey = "eq",
         titleRes = R.string.section_equalizer,
         descriptionRes = R.string.effect_desc_equalizer,
         icon = Icons.Rounded.Equalizer,
         enabled = state.eq.enable,
         onEnabledChange = viewModel::setEqEnabled,
-        controller = controller,
-        scope = scope,
         rows = equalizerCardItems(state, viewModel, onOpenEqScreen)
     )
-    effectSectionItems(
+    emitSection(
         sectionKey = "dynamicEq",
         titleRes = R.string.section_dynamic_eq,
         descriptionRes = R.string.effect_desc_dynamic_eq,
         icon = Icons.Rounded.Insights,
         enabled = state.dynamicEq.enable,
         onEnabledChange = viewModel::setDynamicEqEnabled,
-        controller = controller,
-        scope = scope,
         rows = dynamicEqCardItems(
             state = state,
             viewModel = viewModel,
@@ -3171,170 +3192,144 @@ fun LazyListScope.allEffectSectionsItems(
             onSelectTab = { controller.dynamicEqSelectedTab.intValue = it }
         )
     )
-    effectSectionItems(
+    emitSection(
         sectionKey = "convolver",
         titleRes = R.string.section_convolver,
         descriptionRes = R.string.effect_desc_convolver,
         icon = Icons.Rounded.BlurCircular,
         enabled = state.convolver.enable,
         onEnabledChange = viewModel::setConvolverEnabled,
-        controller = controller,
-        scope = scope,
         rows = convolverCardItems(state, viewModel)
     )
-    effectSectionItems(
+    emitSection(
         sectionKey = "fieldSurround",
         titleRes = R.string.section_field_surround,
         descriptionRes = R.string.effect_desc_field_surround,
         icon = Icons.Rounded.SurroundSound,
         enabled = state.fieldSurround.enable,
         onEnabledChange = viewModel::setFieldSurroundEnabled,
-        controller = controller,
-        scope = scope,
         rows = fieldSurroundCardItems(state, viewModel)
     )
-    effectSectionItems(
+    emitSection(
         sectionKey = "diffSurround",
         titleRes = R.string.section_diff_surround,
         descriptionRes = R.string.effect_desc_diff_surround,
         icon = Icons.Rounded.SpatialAudio,
         enabled = state.diffSurround.enable,
         onEnabledChange = viewModel::setDiffSurroundEnabled,
-        controller = controller,
-        scope = scope,
         rows = diffSurroundCardItems(state, viewModel)
     )
-    effectSectionItems(
+    emitSection(
         sectionKey = "stereoImager",
         titleRes = R.string.section_stereo_imager,
         descriptionRes = R.string.effect_desc_stereo_imager,
         icon = Icons.Rounded.AspectRatio,
         enabled = state.stereoImager.enable,
         onEnabledChange = viewModel::setStereoImagerEnabled,
-        controller = controller,
-        scope = scope,
         rows = stereoImagerCardItems(state, viewModel)
     )
-    effectSectionItems(
+    emitSection(
         sectionKey = "vhe",
         titleRes = R.string.section_headphone_surround,
         descriptionRes = R.string.effect_desc_headphone_surround,
         icon = Icons.Rounded.Headphones,
         enabled = state.headphoneSurround.enable,
         onEnabledChange = viewModel::setHeadphoneSurroundEnabled,
-        controller = controller,
-        scope = scope,
         rows = headphoneSurroundCardItems(state, viewModel)
     )
-    effectSectionItems(
+    emitSection(
         sectionKey = "reverb",
         titleRes = R.string.section_reverb,
         descriptionRes = R.string.effect_desc_reverb,
         icon = Icons.Rounded.BlurOn,
         enabled = state.reverb.enable,
         onEnabledChange = viewModel::setReverbEnabled,
-        controller = controller,
-        scope = scope,
         rows = reverberationCardItems(state, viewModel)
     )
-    effectSectionItems(
+    emitSection(
         sectionKey = "dynamicSystem",
         titleRes = R.string.section_dynamic_system,
         descriptionRes = R.string.effect_desc_dynamic_system,
         icon = Icons.Rounded.CandlestickChart,
         enabled = state.dynamicSystem.enable,
         onEnabledChange = viewModel::setDynamicSystemEnabled,
-        controller = controller,
-        scope = scope,
         rows = dynamicSystemCardItems(state, viewModel)
     )
-    effectSectionItems(
+    emitSection(
         sectionKey = "tubeSimulator",
         titleRes = R.string.section_tube_simulator,
         descriptionRes = R.string.effect_desc_tube_simulator,
         icon = Icons.Rounded.MusicNote,
         enabled = state.tubeSimulator.enable,
         onEnabledChange = viewModel::setTubeSimulatorEnabled,
-        controller = controller,
-        scope = scope,
         rows = tubeSimulatorCardItems(state, viewModel)
     )
-    effectSectionItems(
+    emitSection(
         sectionKey = "psychoBass",
         titleRes = R.string.section_psycho_bass,
         descriptionRes = R.string.effect_desc_psychoacoustic_bass,
         icon = Icons.Rounded.Psychology,
         enabled = state.psychoacousticBass.enable,
         onEnabledChange = viewModel::setPsychoacousticBassEnabled,
-        controller = controller,
-        scope = scope,
         rows = psychoacousticBassCardItems(state, viewModel)
     )
-    effectSectionItems(
+    emitSection(
         sectionKey = "viperBass",
         titleRes = R.string.section_viper_bass,
         descriptionRes = R.string.effect_desc_viper_bass,
         icon = Icons.Rounded.GraphicEq,
         enabled = state.bass.enable,
         onEnabledChange = viewModel::setBassEnabled,
-        controller = controller,
-        scope = scope,
         rows = viperBassCardItems(state, viewModel)
     )
-    effectSectionItems(
+    emitSection(
         sectionKey = "viperBassMono",
         titleRes = R.string.section_viper_bass_mono,
         descriptionRes = R.string.effect_desc_viper_bass_mono,
         icon = Icons.Rounded.GraphicEq,
         enabled = state.bassMono.enable,
         onEnabledChange = viewModel::setBassMonoEnabled,
-        controller = controller,
-        scope = scope,
         rows = viperBassMonoCardItems(state, viewModel)
     )
-    effectSectionItems(
+    emitSection(
         sectionKey = "viperClarity",
         titleRes = R.string.section_viper_clarity,
         descriptionRes = R.string.effect_desc_viper_clarity,
         icon = Icons.Rounded.Hearing,
         enabled = state.clarity.enable,
         onEnabledChange = viewModel::setClarityEnabled,
-        controller = controller,
-        scope = scope,
         rows = viperClarityCardItems(state, viewModel)
     )
-    effectSectionItems(
+    emitSection(
         sectionKey = "cure",
         titleRes = R.string.section_cure,
         descriptionRes = R.string.effect_desc_cure,
         icon = Icons.Rounded.HealthAndSafety,
         enabled = state.cure.enable,
         onEnabledChange = viewModel::setCureEnabled,
-        controller = controller,
-        scope = scope,
         rows = auditoryProtectionCardItems(state, viewModel)
     )
-    effectSectionItems(
+    emitSection(
         sectionKey = "analogX",
         titleRes = R.string.section_analogx,
         descriptionRes = R.string.effect_desc_analogx,
         icon = Icons.Rounded.Memory,
         enabled = state.analogX.enable,
         onEnabledChange = viewModel::setAnalogXEnabled,
-        controller = controller,
-        scope = scope,
         rows = analogXCardItems(state, viewModel)
     )
-    effectSectionItems(
+    emitSection(
         sectionKey = "speakerOpt",
         titleRes = R.string.section_speaker_optimization,
         descriptionRes = R.string.effect_desc_speaker_correction,
         icon = Icons.Rounded.SpeakerPhone,
         enabled = state.speakerCorrection.enable,
         onEnabledChange = viewModel::setSpeakerCorrectionEnabled,
-        controller = controller,
-        scope = scope,
         rows = emptyList(),
         toggleOnly = true
     )
+
+    if (indices != null) {
+        onHeaderIndices?.invoke(indices)
+    }
 }

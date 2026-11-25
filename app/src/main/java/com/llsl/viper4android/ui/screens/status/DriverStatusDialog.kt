@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AdminPanelSettings
 import androidx.compose.material.icons.rounded.DeveloperBoard
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.GraphicEq
@@ -17,6 +18,11 @@ import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Tag
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
@@ -29,6 +35,9 @@ import com.llsl.viper4android.ui.components.StatusBadge
 import com.llsl.viper4android.ui.screens.main.DriverStatus
 import com.llsl.viper4android.ui.theme.StatusColors
 import com.llsl.viper4android.ui.theme.ViperTheme
+import com.llsl.viper4android.utils.RootShell
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Text
@@ -39,7 +48,7 @@ import top.yukonga.miuix.kmp.window.WindowDialog
 private val DialogRowInsideMargin = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
 
 /**
- * 驱动详细状态弹窗：集中展示版本（名称与版本号）、架构、工作模式、实时音频流与采样率，
+ * 驱动详细状态弹窗：集中展示版本（名称与版本号）、架构、工作模式、实时音频流、采样率及 ROOT 权限状态，
  * 由概览页驱动状态摘要卡及音效页顶栏信息按钮共用，避免概览页重复堆砌明细行。
  */
 @Composable
@@ -50,6 +59,14 @@ fun DriverStatusDialog(
     onDismiss: () -> Unit,
     show: Boolean = true,
 ) {
+    var rootGranted by remember { mutableStateOf<Boolean?>(null) }
+
+    LaunchedEffect(show) {
+        if (show) {
+            rootGranted = withContext(Dispatchers.IO) { RootShell.isRootAvailable() }
+        }
+    }
+
     WindowDialog(
         title = stringResource(R.string.menu_driver_status),
         show = show,
@@ -60,6 +77,7 @@ fun DriverStatusDialog(
             driverStatus = driverStatus,
             aidlMode = aidlMode,
             globalMode = globalMode,
+            rootGranted = rootGranted,
             onDismiss = onDismiss,
         )
     }
@@ -70,6 +88,7 @@ private fun DriverStatusDialogContent(
     driverStatus: DriverStatus,
     aidlMode: Boolean,
     globalMode: Boolean,
+    rootGranted: Boolean?,
     onDismiss: () -> Unit,
 ) {
     val aidlLabel = if (aidlMode) {
@@ -172,6 +191,7 @@ private fun DriverStatusDialogContent(
                     },
                 )
             }
+            RootStatusRow(rootGranted = rootGranted)
         }
         Spacer(modifier = Modifier.height(16.dp))
         TextButton(
@@ -182,6 +202,40 @@ private fun DriverStatusDialogContent(
                 .padding(horizontal = 24.dp),
         )
     }
+}
+
+@Composable
+private fun RootStatusRow(
+    rootGranted: Boolean?,
+) {
+    val badgeText = when (rootGranted) {
+        true -> stringResource(R.string.driver_root_granted)
+        false -> stringResource(R.string.driver_root_denied)
+        null -> stringResource(R.string.driver_root_checking)
+    }
+    val badgeColor = when (rootGranted) {
+        true -> StatusColors.healthy
+        false -> StatusColors.danger
+        null -> StatusColors.neutral
+    }
+    BasicComponent(
+        title = stringResource(R.string.driver_root_permission),
+        insideMargin = DialogRowInsideMargin,
+        startAction = {
+            Icon(
+                imageVector = Icons.Rounded.AdminPanelSettings,
+                contentDescription = stringResource(R.string.driver_root_permission),
+                modifier = Modifier.padding(end = 6.dp),
+                tint = MiuixTheme.colorScheme.onBackground,
+            )
+        },
+        endActions = {
+            StatusBadge(
+                text = badgeText,
+                color = badgeColor,
+            )
+        },
+    )
 }
 
 @Composable
@@ -226,6 +280,7 @@ private fun DriverStatusInstalledPreview() {
             ),
             aidlMode = true,
             globalMode = false,
+            rootGranted = true,
             onDismiss = {},
         )
     }
@@ -239,6 +294,7 @@ private fun DriverStatusNotInstalledPreview() {
             driverStatus = DriverStatus(installed = false),
             aidlMode = false,
             globalMode = false,
+            rootGranted = false,
             onDismiss = {},
         )
     }

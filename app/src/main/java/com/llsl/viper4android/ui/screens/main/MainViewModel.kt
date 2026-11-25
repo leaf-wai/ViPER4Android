@@ -17,6 +17,7 @@ import androidx.lifecycle.viewModelScope
 import com.llsl.viper4android.BULK_OP_CHANNEL_ID
 import com.llsl.viper4android.audio.AudioDevice
 import com.llsl.viper4android.audio.AudioOutputDetector
+import com.llsl.viper4android.audio.AudioSessionInfo
 import com.llsl.viper4android.data.model.DeviceSettings
 import com.llsl.viper4android.data.model.DsPreset
 import com.llsl.viper4android.data.model.EqPreset
@@ -27,6 +28,7 @@ import com.llsl.viper4android.data.repository.ViperRepository.Companion.PREF_DEB
 import com.llsl.viper4android.data.repository.ViperRepository.Companion.PREF_EXCLUDED_APPS
 import com.llsl.viper4android.data.repository.ViperRepository.Companion.PREF_GLOBAL_MODE
 import com.llsl.viper4android.data.repository.ViperRepository.Companion.PREF_MASTER_ENABLE
+import com.llsl.viper4android.data.repository.ViperRepository.Companion.PREF_PERSISTENT_NOTIFICATION
 import com.llsl.viper4android.effect.BoolListPref
 import com.llsl.viper4android.effect.BoolPref
 import com.llsl.viper4android.effect.DoubleListPref
@@ -47,6 +49,9 @@ import com.llsl.viper4android.effect.loadEffectStateFromPrefs
 import com.llsl.viper4android.effect.saveEffectPrefs
 import com.llsl.viper4android.effect.serializeEffectPrefs
 import com.llsl.viper4android.service.ViperService
+import com.llsl.viper4android.ui.util.ImmutableList
+import com.llsl.viper4android.ui.util.persistentListOf
+import com.llsl.viper4android.ui.util.toPersistentList
 import com.llsl.viper4android.utils.FileLogger
 import com.llsl.viper4android.utils.ReleaseInfo
 import com.llsl.viper4android.utils.UpdateChecker
@@ -155,17 +160,25 @@ class MainViewModel
         val autoStartEnabled: StateFlow<Boolean>
             field: MutableStateFlow<Boolean> = MutableStateFlow(false)
 
+        val persistentNotificationEnabled: StateFlow<Boolean>
+            field: MutableStateFlow<Boolean> = MutableStateFlow(false)
+
         val aidlModeEnabled: StateFlow<Boolean>
             field: MutableStateFlow<Boolean> = MutableStateFlow(false)
 
         val globalModeEnabled: StateFlow<Boolean>
             field: MutableStateFlow<Boolean> = MutableStateFlow(false)
 
+        val globalModeFallbackNotice: StateFlow<Boolean> = repository.globalModeFallbackNotice
+
         val debugModeEnabled: StateFlow<Boolean>
             field: MutableStateFlow<Boolean> = MutableStateFlow(false)
 
         val excludedApps: StateFlow<Set<String>>
             field: MutableStateFlow<Set<String>> = MutableStateFlow(emptySet())
+
+        val activeSessions: StateFlow<ImmutableList<AudioSessionInfo>>
+            field: MutableStateFlow<ImmutableList<AudioSessionInfo>> = MutableStateFlow(persistentListOf())
 
         val updateState: StateFlow<UpdateState>
             field: MutableStateFlow<UpdateState> = MutableStateFlow(UpdateState())
@@ -176,6 +189,7 @@ class MainViewModel
         private var eqPresetsJob: Job? = null
         private var dsPresetsJob: Job? = null
         private var ddcJob: Job? = null
+        private var sessionsJob: Job? = null
 
         private val serviceConnection =
             object : ServiceConnection {
@@ -184,13 +198,24 @@ class MainViewModel
                     binder: IBinder?,
                 ) {
                     val localBinder = binder as? ViperService.LocalBinder ?: return
-                    viperService = localBinder.service
+                    val service = localBinder.service
+                    viperService = service
                     serviceBound = true
-                    viperService?.setStateProvider { uiState.value }
+                    service.setStateProvider { uiState.value }
+                    sessionsJob?.cancel()
+                    sessionsJob =
+                        viewModelScope.launch {
+                            service.activeSessions.collect { sessions ->
+                                activeSessions.value = sessions.toPersistentList()
+                            }
+                        }
                     queryDriverStatus()
                 }
 
                 override fun onServiceDisconnected(name: ComponentName?) {
+                    sessionsJob?.cancel()
+                    sessionsJob = null
+                    activeSessions.value = persistentListOf()
                     viperService = null
                     serviceBound = false
                 }
@@ -224,6 +249,8 @@ class MainViewModel
 
         override fun onCleared() {
             runBlocking(Dispatchers.IO) { saveCurrentDeviceSettings() }
+            sessionsJob?.cancel()
+            sessionsJob = null
             audioOutputDetector.stop()
             if (serviceBound) {
                 getApplication<Application>().unbindService(serviceConnection)
@@ -386,9 +413,17 @@ class MainViewModel
 
         private suspend fun loadSettingsPreferences() {
             autoStartEnabled.value = repository.getBooleanPreference(PREF_AUTO_START, false).first()
-            globalModeEnabled.value = repository.getBooleanPreference(PREF_GLOBAL_MODE, false).first()
+            persistentNotificationEnabled.value =
+                repository.getBooleanPreference(PREF_PERSISTENT_NOTIFICATION, false).first()
+            globalModeEnabled.value = repository.resolveEffectiveGlobalMode(getApplication())
             debugModeEnabled.value = repository.getBooleanPreference(PREF_DEBUG_MODE, false).first()
             aidlModeEnabled.value = repository.aidlMode
+            viewModelScope.launch {
+                repository
+                    .getBooleanPreference(PREF_GLOBAL_MODE, false)
+                    .distinctUntilChanged()
+                    .collect { globalModeEnabled.value = it }
+            }
             viewModelScope.launch {
                 repository.getStringSetPreference(PREF_EXCLUDED_APPS).collect { excludedApps.value = it }
             }
@@ -1139,6 +1174,7 @@ class MainViewModel
                 repository.renameDevice(deviceId, name)
                 if (deviceId == uiState.value.activeDeviceId) {
                     uiState.update { it.copy(activeDeviceName = name) }
+                    viperService?.updateActiveDeviceName(name)
                 }
             }
         }
@@ -1808,10 +1844,20 @@ class MainViewModel
             viewModelScope.launch { repository.setBooleanPreference(PREF_AUTO_START, enabled) }
         }
 
+        fun togglePersistentNotification(enabled: Boolean) {
+            persistentNotificationEnabled.value = enabled
+            viewModelScope.launch { repository.setBooleanPreference(PREF_PERSISTENT_NOTIFICATION, enabled) }
+            viperService?.setPersistentNotificationEnabled(enabled)
+        }
+
         fun toggleGlobalMode(enabled: Boolean) {
             globalModeEnabled.value = enabled
             viewModelScope.launch { repository.setBooleanPreference(PREF_GLOBAL_MODE, enabled) }
             viperService?.setGlobalMode(enabled)
+        }
+
+        fun consumeGlobalModeFallbackNotice() {
+            repository.consumeGlobalModeFallbackNotice()
         }
 
         fun setAppExcluded(
@@ -1820,7 +1866,42 @@ class MainViewModel
         ) {
             val next = if (excluded) excludedApps.value + packageName else excludedApps.value - packageName
             excludedApps.value = next
+            if (excluded) {
+                viperService?.excludePackageSessions(packageName)
+            }
             viewModelScope.launch { repository.setStringSetPreference(PREF_EXCLUDED_APPS, next) }
+        }
+
+        fun setSessionEnabled(
+            sessionId: Int,
+            enabled: Boolean,
+        ) {
+            viperService?.setSessionEnabled(sessionId, enabled)
+        }
+
+        fun setSessionsEnabled(
+            sessionIds: Set<Int>,
+            enabled: Boolean,
+        ) {
+            viperService?.setSessionsEnabled(sessionIds, enabled)
+        }
+
+        fun excludeApps(packageNames: Set<String>) {
+            val valid = packageNames.filterTo(LinkedHashSet()) { it.isNotEmpty() && !it.all(Char::isDigit) }
+            if (valid.isEmpty()) return
+            val next = excludedApps.value + valid
+            excludedApps.value = next
+            valid.forEach { viperService?.excludePackageSessions(it) }
+            viewModelScope.launch { repository.setStringSetPreference(PREF_EXCLUDED_APPS, next) }
+        }
+
+        fun refreshSessions(onComplete: (() -> Unit)? = null) {
+            val service = viperService
+            if (service != null) {
+                service.refreshSessions(onComplete)
+            } else {
+                onComplete?.invoke()
+            }
         }
 
         fun loadInstalledApps(onLoaded: (List<InstalledAppInfo>) -> Unit) {

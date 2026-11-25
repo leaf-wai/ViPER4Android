@@ -20,6 +20,7 @@ import com.llsl.viper4android.ui.screens.eq.EqEditScreen
 import com.llsl.viper4android.ui.screens.main.MainScreen
 import com.llsl.viper4android.ui.screens.main.MainViewModel
 import com.llsl.viper4android.ui.screens.preset.PresetsScreen
+import com.llsl.viper4android.ui.screens.session.SessionsScreen
 import com.llsl.viper4android.ui.screens.settings.AudioFilesScreen
 import com.llsl.viper4android.ui.screens.settings.ExcludedAppsScreen
 import top.yukonga.miuix.kmp.basic.Scaffold
@@ -44,6 +45,10 @@ private sealed interface ViperRoute : NavKey {
 
     data object Devices : ViperRoute {
         override val routeName: String = "devices"
+    }
+
+    data object Sessions : ViperRoute {
+        override val routeName: String = "sessions"
     }
 
     data object EqEdit : ViperRoute {
@@ -71,6 +76,7 @@ private sealed interface ViperRoute : NavKey {
             Main.routeName -> Main
             Presets.routeName -> Presets
             Devices.routeName -> Devices
+            Sessions.routeName -> Sessions
             EqEdit.routeName -> EqEdit
             ExcludedApps.routeName -> ExcludedApps
             KernelFiles.routeName -> KernelFiles
@@ -135,6 +141,7 @@ fun ViperNavigation(
                     onOpenEqScreen = { push(ViperRoute.EqEdit) },
                     onOpenPresets = { push(ViperRoute.Presets) },
                     onOpenDevices = { push(ViperRoute.Devices) },
+                    onOpenSessions = { push(ViperRoute.Sessions) },
                     onOpenExcludedApps = { push(ViperRoute.ExcludedApps) },
                     onOpenKernelFiles = { push(ViperRoute.KernelFiles) },
                     onOpenVdcFiles = { push(ViperRoute.VdcFiles) },
@@ -152,6 +159,21 @@ fun ViperNavigation(
                     onUpdate = viewModel::saveDevicePreset,
                     onDelete = viewModel::deleteDeviceSettings,
                     onDeleteDevices = viewModel::deleteDeviceSettingsBatch,
+                    onBack = { pop() }
+                )
+            }
+            entry<ViperRoute.Sessions>(swipeDismiss = swipeDismiss) {
+                val state by viewModel.uiState.collectAsStateWithLifecycle()
+                val globalMode by viewModel.globalModeEnabled.collectAsStateWithLifecycle()
+                val sessions by viewModel.activeSessions.collectAsStateWithLifecycle()
+                SessionsScreen(
+                    sessions = sessions,
+                    masterEnabled = state.masterEnable,
+                    globalMode = globalMode,
+                    onToggleSession = viewModel::setSessionEnabled,
+                    onSetSessionsEnabled = viewModel::setSessionsEnabled,
+                    onExcludeApps = viewModel::excludeApps,
+                    onRefresh = { onComplete -> viewModel.refreshSessions(onComplete) },
                     onBack = { pop() }
                 )
             }

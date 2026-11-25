@@ -1,6 +1,7 @@
 package com.llsl.viper4android.data.repository
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.os.Build
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -9,6 +10,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.llsl.viper4android.audio.AudioSessionMonitor
 import com.llsl.viper4android.data.dao.DeviceSettingsDao
 import com.llsl.viper4android.data.dao.DsPresetDao
 import com.llsl.viper4android.data.dao.EqPresetDao
@@ -17,13 +19,19 @@ import com.llsl.viper4android.data.model.DeviceSettings
 import com.llsl.viper4android.data.model.DsPreset
 import com.llsl.viper4android.data.model.EqPreset
 import com.llsl.viper4android.data.model.Preset
+import com.llsl.viper4android.utils.FileLogger
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -229,9 +237,37 @@ class ViperRepository
             }
         }
 
+        private val globalModeFallbackMutex = Mutex()
+        private val _globalModeFallbackNotice = MutableStateFlow(false)
+        val globalModeFallbackNotice: StateFlow<Boolean> = _globalModeFallbackNotice.asStateFlow()
+
+        fun consumeGlobalModeFallbackNotice() {
+            _globalModeFallbackNotice.value = false
+        }
+
+        /**
+         * 解析当前生效的全局模式状态：若偏好为会话模式（false）但当前不具备会话模式权限
+         * （既非特权系统应用又无 Root 权限），则自动回退到全局模式并持久化，同时标记一次提示待 UI 消费。
+         */
+        suspend fun resolveEffectiveGlobalMode(context: Context): Boolean =
+            globalModeFallbackMutex.withLock {
+                val current = getBooleanPreference(PREF_GLOBAL_MODE, false).first()
+                if (current) return@withLock true
+                val canUseSession = withContext(Dispatchers.IO) { AudioSessionMonitor.canUseSessionMode(context) }
+                if (canUseSession) return@withLock false
+                setBooleanPreference(PREF_GLOBAL_MODE, true)
+                FileLogger.w(
+                    "Repository",
+                    "Session mode unavailable (no root or priv-app permission), falling back to global mode",
+                )
+                _globalModeFallbackNotice.value = true
+                true
+            }
+
         companion object {
             const val PREF_MASTER_ENABLE = "master_enable"
             const val PREF_AUTO_START = "auto_start"
+            const val PREF_PERSISTENT_NOTIFICATION = "persistent_notification"
             const val PREF_GLOBAL_MODE = "global_mode"
             const val PREF_DEBUG_MODE = "debug_mode"
             const val PREF_V2_INITIALIZED = "v2_initialized"

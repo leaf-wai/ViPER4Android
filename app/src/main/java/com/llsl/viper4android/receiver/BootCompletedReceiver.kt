@@ -29,7 +29,7 @@ class BootCompletedReceiver : BroadcastReceiver() {
         if (!autoStart) return
 
         try {
-            ViperService.startService(context)
+            ViperService.startService(context, fromBackground = true)
         } catch (e: Exception) {
             FileLogger.e(
                 "BootReceiver",

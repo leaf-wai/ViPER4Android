@@ -246,6 +246,8 @@
     <string name="settings_import_vdc">Импортировать VDC</string>
     <string name="settings_auto_start_desc">Запуск аудиослужбы V4A при загрузке устройства</string>
     <string name="settings_global_mode_desc">Применять эффекты глобально для всей системы</string>
+    <string name="settings_session_mode_requires_root">Режим сессий требует прав root или установки как системное приложение</string>
+    <string name="settings_global_mode_fallback_toast">Права root недоступны, автоматически включён глобальный режим</string>
     <string name="settings_excluded_apps_desc">Пропускать аудиосессии для выбранных приложений</string>
     <string name="settings_debug_mode">Режим отладки</string>
     <string name="settings_debug_mode_desc">Показывать вход в лог отладки</string>

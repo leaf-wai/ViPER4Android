@@ -5,6 +5,11 @@
     <string name="notification_channel_description">Shows when ViPER4Android is processing audio</string>
     <string name="notification_title">ViPER4Android</string>
     <string name="notification_text">Audio processing active</string>
+    <string name="notification_status_disabled">Disabled</string>
+    <string name="notification_title_format">%1$s · %2$s</string>
+    <string name="notification_session_count">Session (%1$d)</string>
+    <string name="notification_action_enable">Turn On</string>
+    <string name="notification_action_disable">Turn Off</string>
     <string name="notification_bulk_op_channel_name">Bulk Operations</string>
     <string name="notification_bulk_op_channel_description">Progress for bulk operations</string>
     <string name="qs_tile_master_label">Master</string>
@@ -232,6 +237,10 @@
     <string name="driver_architecture">Architecture</string>
     <string name="driver_streaming">Streaming</string>
     <string name="driver_sampling_rate">Sampling Rate</string>
+    <string name="driver_root_permission">Root Permission</string>
+    <string name="driver_root_granted">Granted</string>
+    <string name="driver_root_denied">Not Granted</string>
+    <string name="driver_root_checking">Checking\u2026</string>
     <string name="status_active">Active</string>
     <string name="status_inactive">Inactive</string>
     <string name="status_unknown">Unknown</string>
@@ -241,6 +250,7 @@
     <string name="settings_files_section">Files</string>
     <string name="settings_about_section">About</string>
     <string name="settings_auto_start">Auto-start on boot</string>
+    <string name="settings_persistent_notification">Persistent Notification</string>
     <string name="settings_aidl_mode">AIDL mode</string>
     <string name="settings_global_mode">Global mode</string>
     <string name="settings_excluded_apps">Excluded apps</string>
@@ -248,7 +258,11 @@
     <string name="settings_import_kernel">Import Kernel</string>
     <string name="settings_import_vdc">Import VDC</string>
     <string name="settings_auto_start_desc">Start audio service on boot</string>
+    <string name="settings_persistent_notification_desc">Show real-time driver status in the notification bar</string>
+    <string name="settings_notification_permission_denied">Notification permission is required to enable persistent notification</string>
     <string name="settings_global_mode_desc">Apply effects globally</string>
+    <string name="settings_session_mode_requires_root">Session mode requires root or privileged system app permission</string>
+    <string name="settings_global_mode_fallback_toast">Root permission unavailable, switched to Global mode automatically</string>
     <string name="settings_excluded_apps_desc">Skip audio session for selected apps</string>
     <string name="settings_debug_mode">Debug mode</string>
     <string name="settings_debug_mode_desc">Show debug log entry</string>
@@ -378,6 +392,10 @@
     <string name="common_collapse_all">Collapse All</string>
     <string name="common_expand_all">Expand All</string>
     <string name="common_refresh">Refresh</string>
+    <string name="common_pull_to_refresh">Pull down to refresh</string>
+    <string name="common_release_to_refresh">Release to refresh</string>
+    <string name="common_refreshing">Refreshing\u2026</string>
+    <string name="common_refresh_complete">Refreshed successfully</string>
     <string name="common_more">More</string>
 
     <!-- Overview Tab -->
@@ -442,4 +460,41 @@
     <string name="files_delete_selected_title">Delete Selected Files</string>
     <string name="files_delete_selected_confirm">Delete %1$d selected files? This cannot be undone.</string>
     <string name="files_deleted_count_toast">Deleted %1$d files</string>
+
+    <!-- Audio Sessions Management -->
+    <string name="overview_session_management">Audio Sessions</string>
+    <string name="overview_sessions_processing_summary">%1$d processing</string>
+    <string name="overview_sessions_active_summary">%1$d of %2$d processing</string>
+    <string name="overview_sessions_empty_summary">No active audio streams</string>
+    <string name="overview_sessions_master_off_summary">Master switch is off</string>
+    <string name="sessions_title">Audio Sessions</string>
+    <string name="sessions_status_processing">Processing</string>
+    <string name="sessions_status_disabled">Disabled</string>
+    <string name="sessions_id_badge">Session #%1$d</string>
+    <string name="sessions_unknown_app">Unknown App</string>
+    <string name="sessions_uid_format">UID %1$s</string>
+    <string name="sessions_usage_media">Media</string>
+    <string name="sessions_usage_game">Game</string>
+    <string name="sessions_usage_navigation">Navigation</string>
+    <string name="sessions_usage_voice">Voice</string>
+    <string name="sessions_usage_alarm">Alarm</string>
+    <string name="sessions_usage_notification">Notification</string>
+    <string name="sessions_usage_assistant">Assistant</string>
+    <string name="sessions_empty_title">No active sessions</string>
+    <string name="sessions_empty_desc">Audio streams from music, video, or game apps appear here automatically while playing</string>
+    <string name="sessions_empty_master_off_title">Master switch is off</string>
+    <string name="sessions_empty_master_off_desc">Enable Master Enable to detect and process per-app audio sessions</string>
+    <string name="sessions_empty_global_mode_title">Global mode is active</string>
+    <string name="sessions_empty_global_mode_desc">Session management is only available in Session mode. Disable Global mode in Settings to manage per-app streams</string>
+    <string name="sessions_action_enable">Enable</string>
+    <string name="sessions_action_disable">Disable</string>
+    <string name="sessions_action_exclude">Exclude App</string>
+    <string name="sessions_exclude_single_title">Exclude App</string>
+    <string name="sessions_exclude_single_confirm">Add "%1$s" to Excluded Apps and stop processing its audio sessions?</string>
+    <string name="sessions_exclude_multi_title">Exclude Selected Apps</string>
+    <string name="sessions_exclude_multi_confirm">Add %1$d selected apps to Excluded Apps and stop processing their audio sessions?</string>
+    <string name="sessions_excluded_single_toast">Excluded: %1$s</string>
+    <string name="sessions_excluded_multi_toast">Excluded %1$d apps</string>
+    <string name="sessions_enabled_count_toast">Enabled %1$d sessions</string>
+    <string name="sessions_disabled_count_toast">Disabled %1$d sessions</string>
 </resources>
