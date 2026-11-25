@@ -1,7 +1,6 @@
 package com.llsl.viper4android.ui.screens.main
 
 import android.Manifest
-import android.content.Intent
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -80,7 +79,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
-import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -101,7 +99,6 @@ import com.llsl.viper4android.ui.components.StatusBadge
 import com.llsl.viper4android.ui.components.groupedCardItems
 import com.llsl.viper4android.ui.components.layerBackdrop
 import com.llsl.viper4android.ui.components.rememberBlurBackdrop
-import com.llsl.viper4android.ui.screens.settings.UpdateDialog
 import com.llsl.viper4android.ui.screens.status.DriverStatusDialog
 import com.llsl.viper4android.ui.theme.StatusColors
 import com.llsl.viper4android.ui.util.ImmutableList
@@ -149,6 +146,7 @@ fun MainScreen(
     onOpenKernelFiles: () -> Unit = {},
     onOpenVdcFiles: () -> Unit = {},
     onOpenDebugLog: () -> Unit = {},
+    onOpenAbout: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val driverStatus by viewModel.driverStatus.collectAsStateWithLifecycle()
@@ -157,7 +155,6 @@ fun MainScreen(
     val globalMode by viewModel.globalModeEnabled.collectAsStateWithLifecycle()
     val aidlMode by viewModel.aidlModeEnabled.collectAsStateWithLifecycle()
     val debugMode by viewModel.debugModeEnabled.collectAsStateWithLifecycle()
-    val updateState by viewModel.updateState.collectAsStateWithLifecycle()
     val excludedApps by viewModel.excludedApps.collectAsStateWithLifecycle()
     val activeSessions by viewModel.activeSessions.collectAsStateWithLifecycle()
     val kernelFileCount by viewModel.kernelFileList.collectAsStateWithLifecycle()
@@ -173,7 +170,6 @@ fun MainScreen(
     var pendingEffectJump by remember { mutableStateOf<EffectJumpRequest?>(null) }
     var effectJumpCounter by remember { mutableLongStateOf(0L) }
 
-    val context = LocalContext.current
     val platform = rememberPlatformToast()
     val scope = rememberCoroutineScope()
     val expandController = rememberEffectExpandController()
@@ -277,13 +273,13 @@ fun MainScreen(
                     excludedApps = excludedApps,
                     kernelFileCount = kernelFileCount.size,
                     vdcFileCount = vdcFileCount.size,
-                    updateState = updateState,
                     viewModel = viewModel,
                     bottomPadding = bottomPadding,
                     onOpenExcludedApps = onOpenExcludedApps,
                     onOpenKernelFiles = onOpenKernelFiles,
                     onOpenVdcFiles = onOpenVdcFiles,
-                    onOpenDebugLog = onOpenDebugLog
+                    onOpenDebugLog = onOpenDebugLog,
+                    onOpenAbout = onOpenAbout
                 )
             }
         }
@@ -361,46 +357,6 @@ fun MainScreen(
             globalMode = globalMode,
             onDismiss = { showDriverStatusDialog = false }
         )
-    }
-
-    val releaseInfo = updateState.release
-    if (releaseInfo != null) {
-        val noAssetStr = stringResource(R.string.update_no_apk_asset)
-        val appVersionName = remember(context) {
-            try {
-                context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: ""
-            } catch (_: Exception) {
-                ""
-            }
-        }
-        UpdateDialog(
-            release = releaseInfo,
-            currentVersion = appVersionName,
-            upToDate = updateState.upToDate,
-            downloading = updateState.downloading,
-            downloadProgress = updateState.downloadProgress,
-            onDownloadInstall = {
-                viewModel.downloadAndInstall(
-                    release = releaseInfo,
-                    onNoAsset = { platform.showToast(noAssetStr) }
-                )
-            },
-            onViewOnGithub = {
-                val intent = Intent(Intent.ACTION_VIEW, releaseInfo.htmlUrl.toUri())
-                context.startActivity(intent)
-                viewModel.dismissUpdate()
-            },
-            onDismiss = { viewModel.dismissUpdate() }
-        )
-    }
-
-    val updateError = updateState.error
-    if (updateError != null) {
-        val errorMsg = stringResource(R.string.update_check_failed, updateError)
-        LaunchedEffect(updateError) {
-            platform.showToast(errorMsg)
-            viewModel.dismissUpdate()
-        }
     }
 }
 
@@ -798,13 +754,13 @@ private fun SettingsTab(
     excludedApps: Set<String>,
     kernelFileCount: Int,
     vdcFileCount: Int,
-    updateState: UpdateState,
     viewModel: MainViewModel,
     bottomPadding: Dp,
     onOpenExcludedApps: () -> Unit,
     onOpenKernelFiles: () -> Unit,
     onOpenVdcFiles: () -> Unit,
     onOpenDebugLog: () -> Unit,
+    onOpenAbout: () -> Unit,
 ) {
     val scrollBehavior = MiuixScrollBehavior()
     val backdrop = rememberBlurBackdrop()
@@ -839,7 +795,6 @@ private fun SettingsTab(
         }
     }
 
-    val isCheckingUpdate = updateState.checking
     val appVersionName = remember(context) {
         try {
             context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: ""
@@ -1121,13 +1076,13 @@ private fun SettingsTab(
                     keyPrefix = "settings_about",
                     outerBottomPadding = 12.dp,
                     items = listOf(
-                        CardItem("app_version") {
+                        CardItem("about") {
                             ArrowPreference(
-                                title = stringResource(R.string.settings_app_version),
+                                title = stringResource(R.string.about_app_title),
                                 startAction = {
                                     Icon(
                                         imageVector = MiuixIcons.Info,
-                                        contentDescription = stringResource(R.string.settings_app_version),
+                                        contentDescription = stringResource(R.string.about_app_title),
                                         modifier = Modifier.padding(end = 6.dp),
                                         tint = MiuixTheme.colorScheme.onBackground
                                     )
@@ -1139,12 +1094,7 @@ private fun SettingsTab(
                                         color = MiuixTheme.colorScheme.onSurfaceVariantActions
                                     )
                                 },
-                                holdDownState = updateState.release != null,
-                                onClick = {
-                                    if (!isCheckingUpdate) {
-                                        viewModel.checkForUpdate()
-                                    }
-                                }
+                                onClick = onOpenAbout
                             )
                         }
                     )

@@ -21,6 +21,7 @@ import com.llsl.viper4android.ui.screens.main.MainScreen
 import com.llsl.viper4android.ui.screens.main.MainViewModel
 import com.llsl.viper4android.ui.screens.preset.PresetsScreen
 import com.llsl.viper4android.ui.screens.session.SessionsScreen
+import com.llsl.viper4android.ui.screens.settings.AboutScreen
 import com.llsl.viper4android.ui.screens.settings.AudioFilesScreen
 import com.llsl.viper4android.ui.screens.settings.ExcludedAppsScreen
 import top.yukonga.miuix.kmp.basic.Scaffold
@@ -71,6 +72,10 @@ private sealed interface ViperRoute : NavKey {
         override val routeName: String = "debug_log"
     }
 
+    data object About : ViperRoute {
+        override val routeName: String = "about"
+    }
+
     companion object {
         fun fromName(name: String): ViperRoute? = when (name) {
             Main.routeName -> Main
@@ -82,6 +87,7 @@ private sealed interface ViperRoute : NavKey {
             KernelFiles.routeName -> KernelFiles
             VdcFiles.routeName -> VdcFiles
             DebugLog.routeName -> DebugLog
+            About.routeName -> About
             else -> null
         }
     }
@@ -145,7 +151,8 @@ fun ViperNavigation(
                     onOpenExcludedApps = { push(ViperRoute.ExcludedApps) },
                     onOpenKernelFiles = { push(ViperRoute.KernelFiles) },
                     onOpenVdcFiles = { push(ViperRoute.VdcFiles) },
-                    onOpenDebugLog = { push(ViperRoute.DebugLog) }
+                    onOpenDebugLog = { push(ViperRoute.DebugLog) },
+                    onOpenAbout = { push(ViperRoute.About) }
                 )
             }
             entry<ViperRoute.Devices>(swipeDismiss = swipeDismiss) {
@@ -260,6 +267,16 @@ fun ViperNavigation(
                         viewModel.disableDebugMode()
                         pop()
                     },
+                    onBack = { pop() }
+                )
+            }
+            entry<ViperRoute.About>(swipeDismiss = swipeDismiss) {
+                val updateState by viewModel.updateState.collectAsStateWithLifecycle()
+                AboutScreen(
+                    updateState = updateState,
+                    onCheckUpdate = viewModel::checkForUpdate,
+                    onDownloadInstall = viewModel::downloadAndInstall,
+                    onDismissUpdate = viewModel::dismissUpdate,
                     onBack = { pop() }
                 )
             }

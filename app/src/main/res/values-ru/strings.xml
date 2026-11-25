@@ -402,4 +402,16 @@
     <string name="files_delete_selected_title">Удалить выбранные файлы</string>
     <string name="files_delete_selected_confirm">Удалить выбранные файлы (%1$d)? Это действие нельзя отменить.</string>
     <string name="files_deleted_count_toast">Удалено файлов: %1$d</string>
+
+    <!-- About -->
+    <string name="about_title">О приложении</string>
+    <string name="about_app_title">О ViPER4Android</string>
+    <string name="about_version_format">%1$s (%2$d)</string>
+    <string name="about_check_update">Проверить обновления</string>
+    <string name="about_view_source">Исходный код</string>
+    <string name="about_driver_repo">Репозиторий драйвера</string>
+    <string name="about_report_issue">Сообщить об ошибке</string>
+    <string name="about_license">Лицензия</string>
+    <string name="about_open_source_licenses">Лицензии стороннего ПО</string>
+    <string name="about_open_url_failed">Не удалось открыть ссылку</string>
 </resources>
