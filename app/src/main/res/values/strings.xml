@@ -328,6 +328,7 @@
     <string name="action_reset">Reset</string>
     <string name="action_load">Load</string>
     <string name="action_update">Update</string>
+    <string name="action_export">Export</string>
     <string name="action_delete">Delete</string>
     <string name="action_clear">Clear</string>
 
@@ -431,6 +432,9 @@
     <string name="preset_updated_toast">Updated preset: %1$s</string>
     <string name="preset_renamed_toast">Renamed preset: %1$s</string>
     <string name="preset_deleted_toast">Deleted preset: %1$s</string>
+    <string name="preset_exported_toast">Exported preset: %1$s</string>
+    <string name="preset_exported_count_toast">Exported %1$d presets</string>
+    <string name="preset_export_failed_toast">Failed to export preset</string>
     <string name="device_preset_loaded_toast">Loaded device preset: %1$s</string>
     <string name="device_preset_updated_toast">Updated device preset: %1$s</string>
     <string name="device_actions_title">Device Actions</string>

@@ -10,6 +10,7 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.IBinder
+import android.provider.DocumentsContract
 import androidx.compose.runtime.Immutable
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.AndroidViewModel
@@ -49,6 +50,7 @@ import com.llsl.viper4android.effect.loadEffectStateFromPrefs
 import com.llsl.viper4android.effect.saveEffectPrefs
 import com.llsl.viper4android.effect.serializeEffectPrefs
 import com.llsl.viper4android.service.ViperService
+import com.llsl.viper4android.ui.screens.preset.sanitizePresetFileName
 import com.llsl.viper4android.ui.util.ImmutableList
 import com.llsl.viper4android.ui.util.persistentListOf
 import com.llsl.viper4android.ui.util.toPersistentList
@@ -1805,6 +1807,92 @@ class MainViewModel
                 } catch (e: Exception) {
                     FileLogger.e("ViewModel", "renamePreset: file rename failed", e)
                 }
+            }
+        }
+
+        private fun buildExportPresetJson(preset: Preset): String {
+            val obj = JSONObject(preset.settingsJson)
+            if (!obj.has("schemaVersion")) {
+                obj.put("schemaVersion", PRESET_SCHEMA_VERSION)
+            }
+            obj.put("name", preset.name)
+            obj.put("createdAt", preset.createdAt)
+            return obj.toString(2)
+        }
+
+        fun exportPreset(
+            id: Long,
+            targetUri: Uri,
+            onResult: (Boolean) -> Unit,
+        ) {
+            viewModelScope.launch(Dispatchers.IO) {
+                val ok =
+                    try {
+                        val preset = repository.getPresetById(id)
+                        if (preset == null) {
+                            false
+                        } else {
+                            val bytes = buildExportPresetJson(preset).toByteArray(Charsets.UTF_8)
+                            val stream =
+                                getApplication<Application>()
+                                    .contentResolver
+                                    .openOutputStream(targetUri, "wt")
+                            if (stream == null) {
+                                false
+                            } else {
+                                stream.use { output ->
+                                    output.write(bytes)
+                                    output.flush()
+                                }
+                                FileLogger.i("ViewModel", "exportPreset: ${preset.name} -> $targetUri")
+                                true
+                            }
+                        }
+                    } catch (e: Exception) {
+                        FileLogger.e("ViewModel", "exportPreset: failed for id=$id", e)
+                        false
+                    }
+                withContext(Dispatchers.Main) { onResult(ok) }
+            }
+        }
+
+        fun exportPresets(
+            ids: Set<Long>,
+            treeUri: Uri,
+            onResult: (Int) -> Unit,
+        ) {
+            if (ids.isEmpty()) {
+                onResult(0)
+                return
+            }
+            viewModelScope.launch(Dispatchers.IO) {
+                var exported = 0
+                try {
+                    val resolver = getApplication<Application>().contentResolver
+                    val treeDocId = DocumentsContract.getTreeDocumentId(treeUri)
+                    val parentDocUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, treeDocId)
+                    for (id in ids) {
+                        val preset = repository.getPresetById(id) ?: continue
+                        val fileName = sanitizePresetFileName(preset.name)
+                        val docUri =
+                            DocumentsContract.createDocument(
+                                resolver,
+                                parentDocUri,
+                                "application/json",
+                                fileName,
+                            ) ?: continue
+                        val bytes = buildExportPresetJson(preset).toByteArray(Charsets.UTF_8)
+                        resolver.openOutputStream(docUri, "wt")?.use { output ->
+                            output.write(bytes)
+                            output.flush()
+                            exported++
+                        }
+                    }
+                    FileLogger.i("ViewModel", "exportPresets: exported=$exported/${ids.size} -> $treeUri")
+                } catch (e: Exception) {
+                    FileLogger.e("ViewModel", "exportPresets: failed", e)
+                }
+                withContext(Dispatchers.Main) { onResult(exported) }
             }
         }
 

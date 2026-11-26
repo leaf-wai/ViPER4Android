@@ -195,6 +195,8 @@ fun ViperNavigation(
                     onRenamePreset = viewModel::renamePreset,
                     onUpdatePreset = viewModel::updatePreset,
                     onImportPresetFiles = viewModel::importPresetFiles,
+                    onExportPreset = viewModel::exportPreset,
+                    onExportPresets = viewModel::exportPresets,
                     onBack = { pop() }
                 )
             }

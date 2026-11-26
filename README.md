@@ -47,7 +47,7 @@ Miuix UI redesign fork of ViPER4Android FX. Full feature set of the ViPER4Androi
 - **Audio Session Management (Per-App Mode)**: Inspect active per-app audio streams with app icons, session IDs, and audio usage tags; toggle processing per session, batch enable/disable via multi-select, or exclude apps directly
 - **Persistent Notification**: Optional status bar notification showing real-time driver status, active mode/session count, and a quick Turn On / Turn Off action button
 - **Excluded Apps Management**: Searchable app list with system app filtering and excluded apps pinned to the top
-- **Per-Device Profiles & Presets**: Dedicated management screens with automatic device profile switching, v2.1 JSON preset import/export, rename/update, and multi-select batch deletion
+- **Per-Device Profiles & Presets**: Dedicated management screens with automatic device profile switching, v2.1 JSON preset import, single/batch preset export to any directory via the system file picker, rename/update, and multi-select batch deletion
 - **Kernel & VDC File Management**: Dedicated managers for imported Convolver (`.wav` / `.irs`) and ViPER-DDC (`.vdc`) files with one-tap apply, rename, and multi-select batch deletion
 - **AIDL & Legacy HAL Support**: Automatic detection of AIDL and legacy (non-AIDL) audio HALs, supporting both Global mode and Per-App Session mode (with automatic fallback to Global mode when session permissions are unavailable)
 - **Debug Log Viewer**: Toggle `Debug mode` in Settings to access live App & Driver logs with source/level filtering, search, and export

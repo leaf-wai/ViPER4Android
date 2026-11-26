@@ -37,6 +37,7 @@ import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -94,6 +95,7 @@ import top.yukonga.miuix.kmp.icon.extended.Download
 import top.yukonga.miuix.kmp.icon.extended.Refresh
 import top.yukonga.miuix.kmp.icon.extended.Rename
 import top.yukonga.miuix.kmp.icon.extended.SelectAll
+import top.yukonga.miuix.kmp.icon.extended.Share
 import top.yukonga.miuix.kmp.squircle.squircleBackground
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
@@ -107,10 +109,17 @@ private val LongSetSaver = listSaver<Set<Long>, Long>(
     restore = { it.toSet() },
 )
 
+/** 过滤预设名中的路径与非法文件名字符，确保 SAF 导出的默认文件名合法 */
+internal fun sanitizePresetFileName(name: String): String {
+    val cleaned = name.trim().replace(Regex("""[\\/:*?"<>|]"""), "_")
+    val base = cleaned.ifBlank { "preset" }
+    return if (base.endsWith(".json", ignoreCase = true)) base else "$base.json"
+}
+
 /**
  * 预设管理二级页面，由音效 Tab 左上角入口进入，交互与视觉对齐 DeviceScreen 与 MIUIX 规范：
  * 常规模式下单击卡片加载预设、右下角 FloatingActionButton 保存当前预设、顶栏提供导入与多选入口；
- * 长按卡片或点击多选按钮进入选择模式并弹出底部 FloatingToolbar 执行加载 / 更新 / 重命名 / 删除。
+ * 长按卡片或点击多选按钮进入选择模式并弹出底部 FloatingToolbar 执行加载 / 更新 / 重命名 / 导出 / 删除。
  */
 @Composable
 fun PresetsScreen(
@@ -122,6 +131,8 @@ fun PresetsScreen(
     onRenamePreset: (Long, String) -> Unit,
     onUpdatePreset: (Long) -> Unit,
     onImportPresetFiles: (uris: List<Uri>, notificationTitle: String, successStr: String, onDone: (Boolean) -> Unit) -> Unit,
+    onExportPreset: (id: Long, targetUri: Uri, onDone: (Boolean) -> Unit) -> Unit,
+    onExportPresets: (ids: Set<Long>, treeUri: Uri, onDone: (Int) -> Unit) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -129,6 +140,16 @@ fun PresetsScreen(
     val importPresetTitle = stringResource(R.string.settings_import_preset)
     val importSuccessStr = stringResource(R.string.import_success)
     val importFailedStr = stringResource(R.string.import_failed)
+    val exportedToastFmt = stringResource(R.string.preset_exported_toast)
+    val exportedCountToastFmt = stringResource(R.string.preset_exported_count_toast)
+    val exportFailedStr = stringResource(R.string.preset_export_failed_toast)
+
+    var pendingExportId by rememberSaveable { mutableLongStateOf(-1L) }
+    var pendingExportName by rememberSaveable { mutableStateOf("") }
+    var pendingBatchExportIds by rememberSaveable(stateSaver = LongSetSaver) {
+        mutableStateOf(emptySet())
+    }
+    var exportSuccessTick by rememberSaveable { mutableIntStateOf(0) }
 
     val importPresetLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenMultipleDocuments(),
@@ -143,6 +164,40 @@ fun PresetsScreen(
         }
     }
 
+    val exportSingleLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri ->
+        val targetId = pendingExportId
+        val targetName = pendingExportName
+        pendingExportId = -1L
+        pendingExportName = ""
+        if (uri == null || targetId < 0L) return@rememberLauncherForActivityResult
+        onExportPreset(targetId, uri) { ok ->
+            if (ok) {
+                exportSuccessTick++
+                platform.showToast(String.format(Locale.getDefault(), exportedToastFmt, targetName))
+            } else {
+                platform.showToast(exportFailedStr)
+            }
+        }
+    }
+
+    val exportBatchLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree(),
+    ) { treeUri ->
+        val targets = pendingBatchExportIds
+        pendingBatchExportIds = emptySet()
+        if (treeUri == null || targets.isEmpty()) return@rememberLauncherForActivityResult
+        onExportPresets(targets, treeUri) { exportedCount ->
+            if (exportedCount > 0) {
+                exportSuccessTick++
+                platform.showToast(String.format(Locale.getDefault(), exportedCountToastFmt, exportedCount))
+            } else {
+                platform.showToast(exportFailedStr)
+            }
+        }
+    }
+
     PresetsScreenContent(
         presets = presets,
         onSavePreset = onSavePreset,
@@ -152,6 +207,18 @@ fun PresetsScreen(
         onRenamePreset = onRenamePreset,
         onUpdatePreset = onUpdatePreset,
         onImportClick = { importPresetLauncher.launch(arrayOf("*/*")) },
+        onExportSelected = { targets ->
+            if (targets.size == 1) {
+                val target = targets.first()
+                pendingExportId = target.id
+                pendingExportName = target.name
+                exportSingleLauncher.launch(sanitizePresetFileName(target.name))
+            } else if (targets.size > 1) {
+                pendingBatchExportIds = targets.mapTo(LinkedHashSet(targets.size)) { it.id }
+                exportBatchLauncher.launch(null)
+            }
+        },
+        exportSuccessTick = exportSuccessTick,
         onShowToast = { message -> platform.showToast(message) },
         onBack = onBack,
         modifier = modifier,
@@ -168,9 +235,11 @@ private fun PresetsScreenContent(
     onRenamePreset: (Long, String) -> Unit,
     onUpdatePreset: (Long) -> Unit,
     onImportClick: () -> Unit,
+    onExportSelected: (List<Preset>) -> Unit,
     onShowToast: (String) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    exportSuccessTick: Int = 0,
     initialSelectionMode: Boolean = false,
     initialSelectedIds: Set<Long> = emptySet(),
 ) {
@@ -212,6 +281,14 @@ private fun PresetsScreenContent(
             if (pruned.size != selectedIds.size) {
                 selectedIds = pruned
             }
+        }
+    }
+
+    // 导出成功后自动退出选择模式
+    LaunchedEffect(exportSuccessTick) {
+        if (exportSuccessTick > 0) {
+            isSelectionMode = false
+            selectedIds = emptySet()
         }
     }
 
@@ -354,7 +431,7 @@ private fun PresetsScreenContent(
                 exit = fadeOut() + slideOutVertically { it / 2 },
             ) {
                 val hasSingleSelection = selectedIds.size == 1
-                val canDelete = selectedIds.isNotEmpty()
+                val hasSelection = selectedIds.isNotEmpty()
                 FloatingToolbar(
                     showDivider = true,
                 ) {
@@ -416,19 +493,38 @@ private fun PresetsScreenContent(
                         }
                         IconButton(
                             onClick = {
+                                val targets = presets.filter { it.id in selectedIds }
+                                if (targets.isNotEmpty()) {
+                                    onExportSelected(targets)
+                                }
+                            },
+                            enabled = hasSelection,
+                        ) {
+                            Icon(
+                                imageVector = MiuixIcons.Share,
+                                contentDescription = stringResource(R.string.action_export),
+                                tint = if (hasSelection) {
+                                    MiuixTheme.colorScheme.onSurface
+                                } else {
+                                    MiuixTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                },
+                            )
+                        }
+                        IconButton(
+                            onClick = {
                                 if (selectedIds.size == 1) {
                                     deleteTargetId = selectedIds.first()
                                 } else {
                                     showBatchDeleteConfirm = true
                                 }
                             },
-                            enabled = canDelete,
+                            enabled = hasSelection,
                             holdDownState = deleteTarget != null || showBatchDeleteConfirm,
                         ) {
                             Icon(
                                 imageVector = MiuixIcons.Delete,
                                 contentDescription = stringResource(R.string.action_delete),
-                                tint = if (canDelete) {
+                                tint = if (hasSelection) {
                                     MiuixTheme.colorScheme.onSurface
                                 } else {
                                     MiuixTheme.colorScheme.onSurface.copy(alpha = 0.38f)
@@ -747,6 +843,7 @@ private fun PresetsScreenPopulatedPreview() {
             onRenamePreset = { _, _ -> },
             onUpdatePreset = {},
             onImportClick = {},
+            onExportSelected = {},
             onShowToast = {},
             onBack = {},
         )
@@ -771,6 +868,7 @@ private fun PresetsScreenSelectionPreview() {
             onRenamePreset = { _, _ -> },
             onUpdatePreset = {},
             onImportClick = {},
+            onExportSelected = {},
             onShowToast = {},
             onBack = {},
             initialSelectionMode = true,
@@ -792,6 +890,7 @@ private fun PresetsScreenEmptyPreview() {
             onRenamePreset = { _, _ -> },
             onUpdatePreset = {},
             onImportClick = {},
+            onExportSelected = {},
             onShowToast = {},
             onBack = {},
         )

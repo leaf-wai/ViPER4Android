@@ -328,6 +328,7 @@
     <string name="action_reset">重置</string>
     <string name="action_load">加载</string>
     <string name="action_update">更新</string>
+    <string name="action_export">导出</string>
     <string name="action_delete">删除</string>
     <string name="action_clear">清除</string>
 
@@ -431,6 +432,9 @@
     <string name="preset_updated_toast">已更新预设：%1$s</string>
     <string name="preset_renamed_toast">已重命名预设：%1$s</string>
     <string name="preset_deleted_toast">已删除预设：%1$s</string>
+    <string name="preset_exported_toast">已导出预设：%1$s</string>
+    <string name="preset_exported_count_toast">已导出 %1$d 个预设</string>
+    <string name="preset_export_failed_toast">导出预设失败</string>
     <string name="device_preset_loaded_toast">已加载设备预设：%1$s</string>
     <string name="device_preset_updated_toast">已更新设备预设：%1$s</string>
     <string name="device_actions_title">设备操作</string>
