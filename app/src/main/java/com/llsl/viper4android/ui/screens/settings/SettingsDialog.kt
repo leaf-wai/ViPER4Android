@@ -16,11 +16,13 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import com.llsl.viper4android.R
 import com.llsl.viper4android.ui.screens.main.DriverStatus
 import com.llsl.viper4android.ui.theme.StatusColors
+import com.llsl.viper4android.ui.theme.ViperTheme
 import com.llsl.viper4android.ui.util.rememberPlatformToast
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Icon
@@ -57,8 +59,6 @@ fun SettingsDialog(
     val tapCount = remember { mutableIntStateOf(0) }
     val debugModeEnabledStr = stringResource(R.string.debug_mode_enabled)
     val debugAlreadyEnabledStr = stringResource(R.string.debug_already_enabled)
-    val rowMargin = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
-    val titleMargin = PaddingValues(horizontal = 24.dp, vertical = 8.dp)
 
     WindowDialog(
         title = stringResource(R.string.menu_settings),
@@ -66,167 +66,258 @@ fun SettingsDialog(
         onDismissRequest = onDismiss,
         insideMargin = DpSize(0.dp, 24.dp),
     ) {
+        SettingsDialogContent(
+            autoStartEnabled = autoStartEnabled,
+            globalModeEnabled = globalModeEnabled,
+            aidlModeActive = aidlModeActive,
+            driverStatus = driverStatus,
+            appVersionName = appVersionName,
+            onAutoStartChanged = onAutoStartChanged,
+            onGlobalModeChanged = onGlobalModeChanged,
+            onOpenExcludedApps = onOpenExcludedApps,
+            onImportPreset = onImportPreset,
+            onImportKernel = onImportKernel,
+            onImportVdc = onImportVdc,
+            onDriverVersionClick = {
+                if (debugModeEnabled) {
+                    platform.showToast(debugAlreadyEnabledStr, long = false)
+                } else {
+                    tapCount.intValue++
+                    if (tapCount.intValue >= 7) {
+                        tapCount.intValue = 0
+                        onDebugUnlocked()
+                        platform.showToast(debugModeEnabledStr, long = false)
+                    }
+                }
+            },
+            onCheckUpdate = onCheckUpdate,
+            onDismiss = onDismiss,
+        )
+    }
+}
+
+@Composable
+private fun SettingsDialogContent(
+    autoStartEnabled: Boolean,
+    globalModeEnabled: Boolean,
+    aidlModeActive: Boolean,
+    driverStatus: DriverStatus,
+    appVersionName: String,
+    onAutoStartChanged: (Boolean) -> Unit,
+    onGlobalModeChanged: (Boolean) -> Unit,
+    onOpenExcludedApps: () -> Unit,
+    onImportPreset: () -> Unit,
+    onImportKernel: () -> Unit,
+    onImportVdc: () -> Unit,
+    onDriverVersionClick: () -> Unit,
+    onCheckUpdate: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val rowMargin = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
+    val titleMargin = PaddingValues(horizontal = 24.dp, vertical = 8.dp)
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(max = 500.dp),
+    ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = 500.dp),
+                .weight(1f, fill = false)
+                .verticalScroll(rememberScrollState()),
         ) {
-            Column(
-                modifier = Modifier
-                    .weight(1f, fill = false)
-                    .verticalScroll(rememberScrollState()),
-            ) {
-                SmallTitle(
-                    text = stringResource(R.string.settings_general_section),
-                    insideMargin = titleMargin,
-                )
-                SwitchPreference(
-                    title = stringResource(R.string.settings_auto_start),
-                    summary = stringResource(R.string.settings_auto_start_desc),
-                    checked = autoStartEnabled,
-                    onCheckedChange = onAutoStartChanged,
+            SmallTitle(
+                text = stringResource(R.string.settings_general_section),
+                insideMargin = titleMargin,
+            )
+            SwitchPreference(
+                title = stringResource(R.string.settings_auto_start),
+                summary = stringResource(R.string.settings_auto_start_desc),
+                checked = autoStartEnabled,
+                onCheckedChange = onAutoStartChanged,
+                insideMargin = rowMargin,
+            )
+            SwitchPreference(
+                title = stringResource(R.string.settings_global_mode),
+                summary = stringResource(R.string.settings_global_mode_desc),
+                checked = globalModeEnabled,
+                onCheckedChange = onGlobalModeChanged,
+                insideMargin = rowMargin,
+            )
+            if (!globalModeEnabled) {
+                ArrowPreference(
+                    title = stringResource(R.string.settings_excluded_apps),
+                    summary = stringResource(R.string.settings_excluded_apps_desc),
+                    onClick = onOpenExcludedApps,
                     insideMargin = rowMargin,
                 )
-                SwitchPreference(
-                    title = stringResource(R.string.settings_global_mode),
-                    summary = stringResource(R.string.settings_global_mode_desc),
-                    checked = globalModeEnabled,
-                    onCheckedChange = onGlobalModeChanged,
-                    insideMargin = rowMargin,
-                )
-                if (!globalModeEnabled) {
-                    ArrowPreference(
-                        title = stringResource(R.string.settings_excluded_apps),
-                        summary = stringResource(R.string.settings_excluded_apps_desc),
-                        onClick = onOpenExcludedApps,
-                        insideMargin = rowMargin,
+            }
+
+            SmallTitle(
+                text = stringResource(R.string.settings_files_section),
+                insideMargin = titleMargin,
+            )
+            ArrowPreference(
+                title = stringResource(R.string.settings_import_preset),
+                summary = stringResource(R.string.settings_import_preset_desc),
+                onClick = onImportPreset,
+                insideMargin = rowMargin,
+                startAction = {
+                    Icon(
+                        imageVector = MiuixIcons.Download,
+                        contentDescription = null,
+                        tint = MiuixTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .padding(end = 16.dp)
+                            .size(20.dp),
                     )
-                }
+                },
+            )
+            ArrowPreference(
+                title = stringResource(R.string.settings_import_kernel),
+                summary = stringResource(R.string.settings_import_kernel_desc),
+                onClick = onImportKernel,
+                insideMargin = rowMargin,
+                startAction = {
+                    Icon(
+                        imageVector = MiuixIcons.Download,
+                        contentDescription = null,
+                        tint = MiuixTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .padding(end = 16.dp)
+                            .size(20.dp),
+                    )
+                },
+            )
+            ArrowPreference(
+                title = stringResource(R.string.settings_import_vdc),
+                summary = stringResource(R.string.settings_import_vdc_desc),
+                onClick = onImportVdc,
+                insideMargin = rowMargin,
+                startAction = {
+                    Icon(
+                        imageVector = MiuixIcons.Download,
+                        contentDescription = null,
+                        tint = MiuixTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .padding(end = 16.dp)
+                            .size(20.dp),
+                    )
+                },
+            )
 
-                SmallTitle(
-                    text = stringResource(R.string.settings_files_section),
-                    insideMargin = titleMargin,
-                )
-                ArrowPreference(
-                    title = stringResource(R.string.settings_import_preset),
-                    summary = stringResource(R.string.settings_import_preset_desc),
-                    onClick = onImportPreset,
-                    insideMargin = rowMargin,
-                    startAction = {
-                        Icon(
-                            imageVector = MiuixIcons.Download,
-                            contentDescription = null,
-                            tint = MiuixTheme.colorScheme.primary,
-                            modifier = Modifier
-                                .padding(end = 16.dp)
-                                .size(20.dp),
-                        )
-                    },
-                )
-                ArrowPreference(
-                    title = stringResource(R.string.settings_import_kernel),
-                    summary = stringResource(R.string.settings_import_kernel_desc),
-                    onClick = onImportKernel,
-                    insideMargin = rowMargin,
-                    startAction = {
-                        Icon(
-                            imageVector = MiuixIcons.Download,
-                            contentDescription = null,
-                            tint = MiuixTheme.colorScheme.primary,
-                            modifier = Modifier
-                                .padding(end = 16.dp)
-                                .size(20.dp),
-                        )
-                    },
-                )
-                ArrowPreference(
-                    title = stringResource(R.string.settings_import_vdc),
-                    summary = stringResource(R.string.settings_import_vdc_desc),
-                    onClick = onImportVdc,
-                    insideMargin = rowMargin,
-                    startAction = {
-                        Icon(
-                            imageVector = MiuixIcons.Download,
-                            contentDescription = null,
-                            tint = MiuixTheme.colorScheme.primary,
-                            modifier = Modifier
-                                .padding(end = 16.dp)
-                                .size(20.dp),
-                        )
-                    },
-                )
-
-                SmallTitle(
-                    text = stringResource(R.string.settings_about_section),
-                    insideMargin = titleMargin,
-                )
-                ArrowPreference(
-                    title = stringResource(R.string.settings_driver_version),
+            SmallTitle(
+                text = stringResource(R.string.settings_about_section),
+                insideMargin = titleMargin,
+            )
+            ArrowPreference(
+                title = stringResource(R.string.settings_driver_version),
+                endActions = {
+                    Text(
+                        text = if (driverStatus.installed) driverStatus.versionName else "—",
+                        style = MiuixTheme.textStyles.body2,
+                        color = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                    )
+                },
+                onClick = onDriverVersionClick,
+                insideMargin = rowMargin,
+            )
+            BasicComponent(
+                title = stringResource(R.string.settings_driver_arch),
+                endActions = {
+                    Text(
+                        text = if (driverStatus.installed) driverStatus.architecture else "—",
+                        style = MiuixTheme.textStyles.body2,
+                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    )
+                },
+                insideMargin = rowMargin,
+            )
+            if (aidlModeActive) {
+                val activeColor = StatusColors.healthy
+                BasicComponent(
+                    title = stringResource(R.string.settings_aidl_mode),
                     endActions = {
-                        Text(
-                            text = if (driverStatus.installed) driverStatus.versionName else "—",
-                            style = MiuixTheme.textStyles.body2,
-                            color = MiuixTheme.colorScheme.onSurfaceVariantActions,
-                        )
-                    },
-                    onClick = {
-                        if (debugModeEnabled) {
-                            platform.showToast(debugAlreadyEnabledStr, long = false)
-                        } else {
-                            tapCount.intValue++
-                            if (tapCount.intValue >= 7) {
-                                tapCount.intValue = 0
-                                onDebugUnlocked()
-                                platform.showToast(debugModeEnabledStr, long = false)
-                            }
+                        Canvas(modifier = Modifier.size(10.dp)) {
+                            drawCircle(activeColor)
                         }
                     },
                     insideMargin = rowMargin,
                 )
-                BasicComponent(
-                    title = stringResource(R.string.settings_driver_arch),
-                    endActions = {
-                        Text(
-                            text = if (driverStatus.installed) driverStatus.architecture else "—",
-                            style = MiuixTheme.textStyles.body2,
-                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                        )
-                    },
-                    insideMargin = rowMargin,
-                )
-                if (aidlModeActive) {
-                    val activeColor = StatusColors.healthy
-                    BasicComponent(
-                        title = stringResource(R.string.settings_aidl_mode),
-                        endActions = {
-                            Canvas(modifier = Modifier.size(10.dp)) {
-                                drawCircle(activeColor)
-                            }
-                        },
-                        insideMargin = rowMargin,
-                    )
-                }
-                ArrowPreference(
-                    title = stringResource(R.string.settings_app_version),
-                    endActions = {
-                        Text(
-                            text = appVersionName,
-                            style = MiuixTheme.textStyles.body2,
-                            color = MiuixTheme.colorScheme.onSurfaceVariantActions,
-                        )
-                    },
-                    onClick = onCheckUpdate,
-                    insideMargin = rowMargin,
-                )
             }
-            Spacer(modifier = Modifier.height(16.dp))
-            TextButton(
-                text = stringResource(R.string.action_close),
-                onClick = onDismiss,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
+            ArrowPreference(
+                title = stringResource(R.string.settings_app_version),
+                endActions = {
+                    Text(
+                        text = appVersionName,
+                        style = MiuixTheme.textStyles.body2,
+                        color = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                    )
+                },
+                onClick = onCheckUpdate,
+                insideMargin = rowMargin,
             )
         }
+        Spacer(modifier = Modifier.height(16.dp))
+        TextButton(
+            text = stringResource(R.string.action_close),
+            onClick = onDismiss,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
+        )
+    }
+}
+
+@Preview(name = "Settings Dialog - Session Mode", showBackground = true)
+@Composable
+private fun SettingsDialogSessionModePreview() {
+    ViperTheme {
+        SettingsDialogContent(
+            autoStartEnabled = true,
+            globalModeEnabled = false,
+            aidlModeActive = true,
+            driverStatus = DriverStatus(
+                installed = true,
+                versionCode = 2504,
+                versionName = "2.5.0.4",
+                architecture = "arm64-v8a",
+                streaming = true,
+                samplingRate = 48000,
+            ),
+            appVersionName = "2.1.2",
+            onAutoStartChanged = {},
+            onGlobalModeChanged = {},
+            onOpenExcludedApps = {},
+            onImportPreset = {},
+            onImportKernel = {},
+            onImportVdc = {},
+            onDriverVersionClick = {},
+            onCheckUpdate = {},
+            onDismiss = {},
+        )
+    }
+}
+
+@Preview(name = "Settings Dialog - Global Mode", showBackground = true)
+@Composable
+private fun SettingsDialogGlobalModePreview() {
+    ViperTheme {
+        SettingsDialogContent(
+            autoStartEnabled = false,
+            globalModeEnabled = true,
+            aidlModeActive = false,
+            driverStatus = DriverStatus(installed = false),
+            appVersionName = "2.1.2",
+            onAutoStartChanged = {},
+            onGlobalModeChanged = {},
+            onOpenExcludedApps = {},
+            onImportPreset = {},
+            onImportKernel = {},
+            onImportVdc = {},
+            onDriverVersionClick = {},
+            onCheckUpdate = {},
+            onDismiss = {},
+        )
     }
 }

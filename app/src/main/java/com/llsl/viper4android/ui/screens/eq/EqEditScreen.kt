@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.llsl.viper4android.R
@@ -44,6 +45,7 @@ import com.llsl.viper4android.ui.components.layerBackdrop
 import com.llsl.viper4android.ui.components.rememberBlurBackdrop
 import com.llsl.viper4android.ui.components.resolvePresetName
 import com.llsl.viper4android.ui.theme.StatusColors
+import com.llsl.viper4android.ui.theme.ViperTheme
 import com.llsl.viper4android.ui.util.horizontalCutoutPadding
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Icon
@@ -290,6 +292,76 @@ fun EqEditScreen(
                 deletePresetId = null
             },
             onDismiss = { deletePresetId = null }
+        )
+    }
+}
+
+@Preview(name = "EQ Edit - 10 Bands", showBackground = true)
+@Composable
+private fun EqEditScreen10BandsPreview() {
+    ViperTheme {
+        EqEditScreen(
+            bands = listOf(4.5f, 4.5f, 3.5f, 1.2f, 1.0f, 0.5f, 1.4f, 1.75f, 3.5f, 2.5f),
+            bandCount = 10,
+            presetId = 1L,
+            presets = listOf(
+                EqPreset(
+                    id = 1L,
+                    name = "Acoustic",
+                    nameKey = "eq_preset_acoustic",
+                    bandCount = 10,
+                    bands = "4.5;4.5;3.5;1.2;1.0;0.5;1.4;1.75;3.5;2.5;",
+                ),
+                EqPreset(
+                    id = 2L,
+                    name = "Bass Booster",
+                    nameKey = "eq_preset_bass_booster",
+                    bandCount = 10,
+                    bands = "6.0;4.0;2.0;0.0;0.0;0.0;0.0;0.0;0.0;0.0;",
+                ),
+                EqPreset(
+                    id = 3L,
+                    name = "Flat",
+                    nameKey = "eq_preset_flat",
+                    bandCount = 10,
+                    bands = "0.0;0.0;0.0;0.0;0.0;0.0;0.0;0.0;0.0;0.0;",
+                ),
+            ),
+            onBandCountChange = {},
+            onBandsChange = {},
+            onPresetSelect = {},
+            onPresetAdd = {},
+            onPresetDelete = {},
+            onReset = {},
+            onBack = {},
+        )
+    }
+}
+
+@Preview(name = "EQ Edit - 15 Bands Custom", showBackground = true)
+@Composable
+private fun EqEditScreen15BandsCustomPreview() {
+    ViperTheme {
+        EqEditScreen(
+            bands = listOf(3.0f, 4.0f, 6.0f, 4.5f, 3.0f, 1.0f, -0.5f, -1.0f, -0.5f, 0.5f, 1.0f, 1.5f, 2.0f, 2.5f, 3.0f),
+            bandCount = 15,
+            presetId = null,
+            presets = listOf(
+                EqPreset(
+                    id = 1L,
+                    name = "R&B",
+                    nameKey = "eq_preset_rnb",
+                    bandCount = 15,
+                    bands = "3.0;4.0;6.0;4.5;3.0;1.0;-0.5;-1.0;-0.5;0.5;1.0;1.5;2.0;2.5;3.0;",
+                ),
+            ),
+            onBandCountChange = {},
+            onBandsChange = {},
+            onPresetSelect = {},
+            onPresetAdd = {},
+            onPresetDelete = {},
+            onReset = {},
+            onBack = {},
         )
     }
 }

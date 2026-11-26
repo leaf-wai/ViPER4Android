@@ -56,6 +56,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.LayoutDirection
@@ -71,6 +72,7 @@ import com.llsl.viper4android.ui.components.effect.BgEffectConfig
 import com.llsl.viper4android.ui.components.layerBackdrop
 import com.llsl.viper4android.ui.components.rememberBlurBackdrop
 import com.llsl.viper4android.ui.screens.main.UpdateState
+import com.llsl.viper4android.ui.theme.ViperTheme
 import com.llsl.viper4android.ui.util.horizontalCutoutPadding
 import com.llsl.viper4android.ui.util.rememberPlatformToast
 import com.llsl.viper4android.utils.ReleaseInfo
@@ -94,9 +96,9 @@ import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 import top.yukonga.miuix.kmp.window.WindowDialog
 
-private const val REPO_URL = "https://github.com/likelikeslike/ViPER4Android"
+private const val REPO_URL = "https://github.com/leaf-wai/ViPER4Android"
 private const val DRIVER_REPO_URL = "https://github.com/likelikeslike/ViPERFX_RE"
-private const val ISSUES_URL = "https://github.com/likelikeslike/ViPER4Android/issues"
+private const val ISSUES_URL = "https://github.com/leaf-wai/ViPER4Android/issues"
 private const val LICENSE_URL = "https://www.gnu.org/licenses/gpl-3.0.html"
 
 @Immutable
@@ -149,6 +151,43 @@ fun AboutScreen(
         }
     }
 
+    AboutScreenContent(
+        appVersionName = appVersionName,
+        appVersionCode = appVersionCode,
+        updateState = updateState,
+        onCheckUpdate = onCheckUpdate,
+        onDownloadInstall = onDownloadInstall,
+        onViewReleaseOnGithub = { htmlUrl ->
+            runCatching {
+                val intent = Intent(Intent.ACTION_VIEW, htmlUrl.toUri())
+                context.startActivity(intent)
+            }.onFailure {
+                platform.showToast(openUrlFailedToast, long = false)
+            }
+            onDismissUpdate()
+        },
+        onDismissUpdate = onDismissUpdate,
+        onOpenUrl = openUrl,
+        onShowToast = { msg -> platform.showToast(msg, long = false) },
+        onBack = onBack,
+        modifier = modifier,
+    )
+}
+
+@Composable
+private fun AboutScreenContent(
+    appVersionName: String,
+    appVersionCode: Long,
+    updateState: UpdateState,
+    onCheckUpdate: () -> Unit,
+    onDownloadInstall: (ReleaseInfo, () -> Unit) -> Unit,
+    onViewReleaseOnGithub: (String) -> Unit,
+    onDismissUpdate: () -> Unit,
+    onOpenUrl: (String) -> Unit,
+    onShowToast: (String) -> Unit,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     var showLicensesDialog by rememberSaveable { mutableStateOf(false) }
 
     val scrollBehavior = MiuixScrollBehavior()
@@ -238,7 +277,7 @@ fun AboutScreen(
                 lazyListState = lazyListState,
                 scrollProgressProvider = { scrollProgress },
                 onCheckUpdate = onCheckUpdate,
-                onOpenUrl = openUrl,
+                onOpenUrl = onOpenUrl,
                 onOpenLicenses = { showLicensesDialog = true },
             )
         }
@@ -246,7 +285,7 @@ fun AboutScreen(
 
     if (showLicensesDialog) {
         ThirdPartyLicensesDialog(
-            onOpenUrl = openUrl,
+            onOpenUrl = onOpenUrl,
             onDismiss = { showLicensesDialog = false },
         )
     }
@@ -262,18 +301,10 @@ fun AboutScreen(
             downloadProgress = updateState.downloadProgress,
             onDownloadInstall = {
                 onDownloadInstall(releaseInfo) {
-                    platform.showToast(noAssetStr)
+                    onShowToast(noAssetStr)
                 }
             },
-            onViewOnGithub = {
-                runCatching {
-                    val intent = Intent(Intent.ACTION_VIEW, releaseInfo.htmlUrl.toUri())
-                    context.startActivity(intent)
-                }.onFailure {
-                    platform.showToast(openUrlFailedToast, long = false)
-                }
-                onDismissUpdate()
-            },
+            onViewOnGithub = { onViewReleaseOnGithub(releaseInfo.htmlUrl) },
             onDismiss = onDismissUpdate,
         )
     }
@@ -282,7 +313,7 @@ fun AboutScreen(
     if (updateError != null) {
         val errorMsg = stringResource(R.string.update_check_failed, updateError)
         LaunchedEffect(updateError) {
-            platform.showToast(errorMsg)
+            onShowToast(errorMsg)
             onDismissUpdate()
         }
     }
@@ -633,5 +664,43 @@ private fun ThirdPartyLicensesDialog(
                     .padding(horizontal = 24.dp),
             )
         }
+    }
+}
+
+@Preview(name = "About Screen", showBackground = true)
+@Composable
+private fun AboutScreenPreview() {
+    ViperTheme {
+        AboutScreenContent(
+            appVersionName = "1.0.0",
+            appVersionCode = 100L,
+            updateState = UpdateState(),
+            onCheckUpdate = {},
+            onDownloadInstall = { _, _ -> },
+            onViewReleaseOnGithub = {},
+            onDismissUpdate = {},
+            onOpenUrl = {},
+            onShowToast = {},
+            onBack = {},
+        )
+    }
+}
+
+@Preview(name = "About Screen - Checking Update", showBackground = true)
+@Composable
+private fun AboutScreenCheckingUpdatePreview() {
+    ViperTheme {
+        AboutScreenContent(
+            appVersionName = "1.0.0",
+            appVersionCode = 100L,
+            updateState = UpdateState(checking = true),
+            onCheckUpdate = {},
+            onDownloadInstall = { _, _ -> },
+            onViewReleaseOnGithub = {},
+            onDismissUpdate = {},
+            onOpenUrl = {},
+            onShowToast = {},
+            onBack = {},
+        )
     }
 }

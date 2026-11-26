@@ -21,12 +21,14 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.llsl.viper4android.R
 import com.llsl.viper4android.ui.components.DialogCard
 import com.llsl.viper4android.ui.components.UiDimens
 import com.llsl.viper4android.ui.theme.StatusColors
+import com.llsl.viper4android.ui.theme.ViperTheme
 import com.llsl.viper4android.utils.ReleaseInfo
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.LinearProgressIndicator
@@ -48,96 +50,119 @@ fun UpdateDialog(
     onDismiss: () -> Unit,
     show: Boolean = true,
 ) {
-    val bodyColor = MiuixTheme.colorScheme.onSurface
-    val headingColor = MiuixTheme.colorScheme.primary
-    val codeColor = bodyColor.copy(alpha = 0.85f)
-    val blocks = remember(release.body) { parseBlocks(release.body) }
-
     WindowDialog(
         title = stringResource(if (upToDate) R.string.update_up_to_date_title else R.string.update_available_title),
         show = show,
         onDismissRequest = { if (!downloading) onDismiss() },
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = 500.dp),
-        ) {
-            Text(
-                text = stringResource(
-                    if (upToDate) R.string.update_latest_version else R.string.update_new_version,
-                    release.name,
-                ),
-                style = MiuixTheme.textStyles.subtitle,
-                color = MiuixTheme.colorScheme.primary,
-            )
-            Text(
-                text = stringResource(R.string.update_current_version, currentVersion),
-                style = MiuixTheme.textStyles.body2,
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                modifier = Modifier.padding(bottom = UiDimens.Medium),
-            )
-            if (blocks.isNotEmpty()) {
-                Column(
-                    modifier = Modifier
-                        .weight(1f, fill = false)
-                        .verticalScroll(rememberScrollState()),
-                ) {
-                    DialogCard {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(UiDimens.XLarge),
-                        ) {
-                            blocks.forEach { block ->
-                                BlockView(block, bodyColor, headingColor, codeColor)
-                            }
+        UpdateDialogContent(
+            release = release,
+            currentVersion = currentVersion,
+            upToDate = upToDate,
+            downloading = downloading,
+            downloadProgress = downloadProgress,
+            onDownloadInstall = onDownloadInstall,
+            onViewOnGithub = onViewOnGithub,
+            onDismiss = onDismiss,
+        )
+    }
+}
+
+@Composable
+private fun UpdateDialogContent(
+    release: ReleaseInfo,
+    currentVersion: String,
+    upToDate: Boolean,
+    downloading: Boolean,
+    downloadProgress: Int,
+    onDownloadInstall: () -> Unit,
+    onViewOnGithub: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val bodyColor = MiuixTheme.colorScheme.onSurface
+    val headingColor = MiuixTheme.colorScheme.primary
+    val codeColor = bodyColor.copy(alpha = 0.85f)
+    val blocks = remember(release.body) { parseBlocks(release.body) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(max = 500.dp),
+    ) {
+        Text(
+            text = stringResource(
+                if (upToDate) R.string.update_latest_version else R.string.update_new_version,
+                release.name,
+            ),
+            style = MiuixTheme.textStyles.subtitle,
+            color = MiuixTheme.colorScheme.primary,
+        )
+        Text(
+            text = stringResource(R.string.update_current_version, currentVersion),
+            style = MiuixTheme.textStyles.body2,
+            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            modifier = Modifier.padding(bottom = UiDimens.Medium),
+        )
+        if (blocks.isNotEmpty()) {
+            Column(
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                DialogCard {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(UiDimens.XLarge),
+                    ) {
+                        blocks.forEach { block ->
+                            BlockView(block, bodyColor, headingColor, codeColor)
                         }
                     }
                 }
             }
-            if (downloading) {
-                Text(
-                    text = stringResource(R.string.update_downloading, downloadProgress),
-                    style = MiuixTheme.textStyles.body2,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                    modifier = Modifier.padding(top = UiDimens.XLarge),
-                )
-                LinearProgressIndicator(
-                    progress = (downloadProgress / 100f).coerceIn(0f, 1f),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = UiDimens.Compact),
-                )
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
+        }
+        if (downloading) {
+            Text(
+                text = stringResource(R.string.update_downloading, downloadProgress),
+                style = MiuixTheme.textStyles.body2,
+                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                modifier = Modifier.padding(top = UiDimens.XLarge),
+            )
+            LinearProgressIndicator(
+                progress = (downloadProgress / 100f).coerceIn(0f, 1f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = UiDimens.Compact),
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            TextButton(
+                text = stringResource(R.string.update_view_on_github),
+                onClick = onViewOnGithub,
+                modifier = Modifier.weight(1f),
+                enabled = !downloading,
+            )
+            if (!upToDate) {
                 TextButton(
-                    text = stringResource(R.string.update_view_on_github),
-                    onClick = onViewOnGithub,
-                    modifier = Modifier.weight(1f),
+                    text = stringResource(R.string.update_download_install),
+                    onClick = onDownloadInstall,
                     enabled = !downloading,
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.textButtonColorsPrimary(),
                 )
-                if (!upToDate) {
-                    TextButton(
-                        text = stringResource(R.string.update_download_install),
-                        onClick = onDownloadInstall,
-                        enabled = !downloading,
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.textButtonColorsPrimary(),
-                    )
-                } else {
-                    TextButton(
-                        text = stringResource(R.string.action_close),
-                        onClick = onDismiss,
-                        enabled = !downloading,
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.textButtonColorsPrimary(),
-                    )
-                }
+            } else {
+                TextButton(
+                    text = stringResource(R.string.action_close),
+                    onClick = onDismiss,
+                    enabled = !downloading,
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.textButtonColorsPrimary(),
+                )
             }
         }
     }
@@ -358,3 +383,69 @@ private fun buildInline(
             withStyle(SpanStyle(color = bodyColor)) { append(text.substring(cursor)) }
         }
     }
+
+private val PreviewRelease = ReleaseInfo(
+    tagName = "v2.2.0",
+    name = "v2.2.0",
+    body = """
+        ## What's New
+        - Added **Miuix** adaptive layout and frosted glass bars
+        - Added `AudioSessionMonitor` per-app session control
+        > [!NOTE]
+        > Session mode requires root or priv-app permissions.
+    """.trimIndent(),
+    htmlUrl = "https://github.com/leaf-wai/ViPER4Android/releases/tag/v2.2.0",
+    apkUrl = "https://github.com/leaf-wai/ViPER4Android/releases/download/v2.2.0/app-release.apk",
+    apkName = "app-release.apk",
+)
+
+@Preview(name = "Update Available", showBackground = true)
+@Composable
+private fun UpdateAvailablePreview() {
+    ViperTheme {
+        UpdateDialogContent(
+            release = PreviewRelease,
+            currentVersion = "2.1.2",
+            upToDate = false,
+            downloading = false,
+            downloadProgress = 0,
+            onDownloadInstall = {},
+            onViewOnGithub = {},
+            onDismiss = {},
+        )
+    }
+}
+
+@Preview(name = "Update Downloading", showBackground = true)
+@Composable
+private fun UpdateDownloadingPreview() {
+    ViperTheme {
+        UpdateDialogContent(
+            release = PreviewRelease,
+            currentVersion = "2.1.2",
+            upToDate = false,
+            downloading = true,
+            downloadProgress = 64,
+            onDownloadInstall = {},
+            onViewOnGithub = {},
+            onDismiss = {},
+        )
+    }
+}
+
+@Preview(name = "Up To Date", showBackground = true)
+@Composable
+private fun UpdateUpToDatePreview() {
+    ViperTheme {
+        UpdateDialogContent(
+            release = PreviewRelease.copy(tagName = "v2.1.2", name = "v2.1.2"),
+            currentVersion = "2.1.2",
+            upToDate = true,
+            downloading = false,
+            downloadProgress = 0,
+            onDownloadInstall = {},
+            onViewOnGithub = {},
+            onDismiss = {},
+        )
+    }
+}

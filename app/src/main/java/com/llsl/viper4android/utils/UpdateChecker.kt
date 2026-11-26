@@ -48,7 +48,7 @@ class UpdateChecker
     ) {
         companion object {
             private const val TAG = "UpdateChecker"
-            private const val OWNER = "likelikeslike"
+            private const val OWNER = "leaf-wai"
             private const val REPO = "ViPER4Android"
             private const val LATEST_RELEASE_URL =
                 "https://api.github.com/repos/$OWNER/$REPO/releases/latest"

@@ -2,6 +2,7 @@ package com.llsl.viper4android.ui.screens.main
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.media.AudioAttributes
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
@@ -74,6 +75,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -90,7 +92,11 @@ import com.llsl.viper4android.R
 import com.llsl.viper4android.audio.AudioDevice
 import com.llsl.viper4android.audio.AudioSessionInfo
 import com.llsl.viper4android.audio.AudioSessionMonitor
+import com.llsl.viper4android.effect.BassState
+import com.llsl.viper4android.effect.ClarityState
+import com.llsl.viper4android.effect.ConvolverState
 import com.llsl.viper4android.effect.EffectState
+import com.llsl.viper4android.effect.EqState
 import com.llsl.viper4android.ui.components.AdaptiveTopAppBar
 import com.llsl.viper4android.ui.components.BlurredBar
 import com.llsl.viper4android.ui.components.CardItem
@@ -101,10 +107,12 @@ import com.llsl.viper4android.ui.components.layerBackdrop
 import com.llsl.viper4android.ui.components.rememberBlurBackdrop
 import com.llsl.viper4android.ui.screens.status.DriverStatusDialog
 import com.llsl.viper4android.ui.theme.StatusColors
+import com.llsl.viper4android.ui.theme.ViperTheme
 import com.llsl.viper4android.ui.util.ImmutableList
 import com.llsl.viper4android.ui.util.WideContentBox
 import com.llsl.viper4android.ui.util.rememberIsWideScreen
 import com.llsl.viper4android.ui.util.rememberPlatformToast
+import com.llsl.viper4android.ui.util.toPersistentList
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -166,15 +174,15 @@ fun MainScreen(
         viewModel.saveSettingsOnBackground()
     }
 
-    var showDriverStatusDialog by rememberSaveable { mutableStateOf(false) }
-    var pendingEffectJump by remember { mutableStateOf<EffectJumpRequest?>(null) }
-    var effectJumpCounter by remember { mutableLongStateOf(0L) }
-
+    val context = LocalContext.current
     val platform = rememberPlatformToast()
     val scope = rememberCoroutineScope()
-    val expandController = rememberEffectExpandController()
+    var checkingSessionPermission by remember { mutableStateOf(false) }
 
     val globalModeFallbackToast = stringResource(R.string.settings_global_mode_fallback_toast)
+    val sessionModeRequiresRootToast = stringResource(R.string.settings_session_mode_requires_root)
+    val notificationPermissionDeniedToast = stringResource(R.string.settings_notification_permission_denied)
+
     LaunchedEffect(globalModeFallbackNotice) {
         if (globalModeFallbackNotice) {
             viewModel.consumeGlobalModeFallbackNotice()
@@ -182,20 +190,175 @@ fun MainScreen(
         }
     }
 
+    val hasNotificationPermission = {
+        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED &&
+            NotificationManagerCompat.from(context).areNotificationsEnabled()
+    }
+
+    val notificationPermissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted && NotificationManagerCompat.from(context).areNotificationsEnabled()) {
+                viewModel.togglePersistentNotification(true)
+            } else {
+                platform.showToast(notificationPermissionDeniedToast, long = false)
+            }
+        }
+
+    // 返回前台时若系统通知权限已被外部撤销，同步关闭开关状态
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        if (persistentNotification && !hasNotificationPermission()) {
+            viewModel.togglePersistentNotification(false)
+        }
+    }
+
+    val appVersionName = remember(context) {
+        try {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: ""
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
+    MainScreenContent(
+        state = state,
+        driverStatus = driverStatus,
+        autoStart = autoStart,
+        persistentNotification = persistentNotification,
+        globalMode = globalMode,
+        aidlMode = aidlMode,
+        debugMode = debugMode,
+        excludedApps = excludedApps,
+        activeSessions = activeSessions,
+        kernelFileCount = kernelFileCount.size,
+        vdcFileCount = vdcFileCount.size,
+        appVersionName = appVersionName,
+        effectActions = viewModel,
+        onPollDriverStatus = {
+            while (true) {
+                viewModel.queryDriverStatus()
+                delay(500L)
+            }
+        },
+        onToggleAutoStart = viewModel::toggleAutoStart,
+        onTogglePersistentNotification = { enabled ->
+            if (!enabled) {
+                viewModel.togglePersistentNotification(false)
+            } else {
+                val permGranted =
+                    ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.POST_NOTIFICATIONS,
+                    ) == PackageManager.PERMISSION_GRANTED
+                when {
+                    !permGranted -> {
+                        notificationPermissionLauncher.launch(
+                            Manifest.permission.POST_NOTIFICATIONS,
+                        )
+                    }
+                    !NotificationManagerCompat.from(context).areNotificationsEnabled() -> {
+                        platform.showToast(
+                            notificationPermissionDeniedToast,
+                            long = false,
+                        )
+                    }
+                    else -> {
+                        viewModel.togglePersistentNotification(true)
+                    }
+                }
+            }
+        },
+        onToggleGlobalMode = { enabled ->
+            if (enabled) {
+                // 全局模式通过 session 0 生效，无需 Root 或特权权限
+                viewModel.toggleGlobalMode(true)
+            } else if (!checkingSessionPermission) {
+                // 关闭全局模式切回会话模式时，需具备特权应用权限或 Root 权限
+                checkingSessionPermission = true
+                scope.launch {
+                    val granted = try {
+                        withContext(Dispatchers.IO) {
+                            AudioSessionMonitor.canUseSessionMode(context)
+                        }
+                    } finally {
+                        checkingSessionPermission = false
+                    }
+                    if (granted) {
+                        viewModel.toggleGlobalMode(false)
+                    } else {
+                        platform.showToast(sessionModeRequiresRootToast, long = false)
+                    }
+                }
+            }
+        },
+        onToggleDebugMode = { enabled ->
+            if (enabled) {
+                viewModel.enableDebugMode()
+            } else {
+                viewModel.disableDebugMode()
+            }
+        },
+        onOpenEqScreen = onOpenEqScreen,
+        onOpenPresets = onOpenPresets,
+        onOpenDevices = onOpenDevices,
+        onOpenSessions = onOpenSessions,
+        onOpenExcludedApps = onOpenExcludedApps,
+        onOpenKernelFiles = onOpenKernelFiles,
+        onOpenVdcFiles = onOpenVdcFiles,
+        onOpenDebugLog = onOpenDebugLog,
+        onOpenAbout = onOpenAbout,
+    )
+}
+
+@Composable
+private fun MainScreenContent(
+    state: EffectState,
+    driverStatus: DriverStatus,
+    autoStart: Boolean,
+    persistentNotification: Boolean,
+    globalMode: Boolean,
+    aidlMode: Boolean,
+    debugMode: Boolean,
+    excludedApps: Set<String>,
+    activeSessions: ImmutableList<AudioSessionInfo>,
+    kernelFileCount: Int,
+    vdcFileCount: Int,
+    appVersionName: String,
+    effectActions: EffectActions,
+    onPollDriverStatus: (suspend () -> Unit)? = null,
+    onToggleAutoStart: (Boolean) -> Unit = {},
+    onTogglePersistentNotification: (Boolean) -> Unit = {},
+    onToggleGlobalMode: (Boolean) -> Unit = {},
+    onToggleDebugMode: (Boolean) -> Unit = {},
+    onOpenEqScreen: () -> Unit = {},
+    onOpenPresets: () -> Unit = {},
+    onOpenDevices: () -> Unit = {},
+    onOpenSessions: () -> Unit = {},
+    onOpenExcludedApps: () -> Unit = {},
+    onOpenKernelFiles: () -> Unit = {},
+    onOpenVdcFiles: () -> Unit = {},
+    onOpenDebugLog: () -> Unit = {},
+    onOpenAbout: () -> Unit = {},
+    initialPage: Int = 0,
+) {
+    var showDriverStatusDialog by rememberSaveable { mutableStateOf(false) }
+    var pendingEffectJump by remember { mutableStateOf<EffectJumpRequest?>(null) }
+    var effectJumpCounter by remember { mutableLongStateOf(0L) }
+
+    val scope = rememberCoroutineScope()
+    val expandController = rememberEffectExpandController()
+
     val isWideScreen = rememberIsWideScreen()
-    val pagerState = rememberPagerState(pageCount = { 3 })
+    val pagerState = rememberPagerState(initialPage = initialPage, pageCount = { 3 })
     val railState = rememberNavigationRailState()
 
     val outerBackdrop = rememberBlurBackdrop()
     val outerBlurActive = outerBackdrop != null
     val outerBarColor = if (outerBlurActive) Color.Transparent else MiuixTheme.colorScheme.surface
 
-    LaunchedEffect(pagerState.currentPage, showDriverStatusDialog) {
-        if (pagerState.currentPage == 0 || showDriverStatusDialog) {
-            while (true) {
-                viewModel.queryDriverStatus()
-                delay(500L)
-            }
+    LaunchedEffect(pagerState.currentPage, showDriverStatusDialog, onPollDriverStatus) {
+        if (onPollDriverStatus != null && (pagerState.currentPage == 0 || showDriverStatusDialog)) {
+            onPollDriverStatus()
         }
     }
 
@@ -239,7 +402,7 @@ fun MainScreen(
                     aidlMode = aidlMode,
                     globalMode = globalMode,
                     activeSessions = activeSessions,
-                    viewModel = viewModel,
+                    onSetMasterEnabled = effectActions::setMasterEnabled,
                     bottomPadding = bottomPadding,
                     onJumpToEffects = { sectionKey ->
                         if (sectionKey != null) {
@@ -255,7 +418,7 @@ fun MainScreen(
 
                 1 -> EffectsTab(
                     state = state,
-                    viewModel = viewModel,
+                    effectActions = effectActions,
                     expandController = expandController,
                     jumpRequest = pendingEffectJump,
                     bottomPadding = bottomPadding,
@@ -271,9 +434,13 @@ fun MainScreen(
                     globalMode = globalMode,
                     debugMode = debugMode,
                     excludedApps = excludedApps,
-                    kernelFileCount = kernelFileCount.size,
-                    vdcFileCount = vdcFileCount.size,
-                    viewModel = viewModel,
+                    kernelFileCount = kernelFileCount,
+                    vdcFileCount = vdcFileCount,
+                    appVersionName = appVersionName,
+                    onToggleAutoStart = onToggleAutoStart,
+                    onTogglePersistentNotification = onTogglePersistentNotification,
+                    onToggleGlobalMode = onToggleGlobalMode,
+                    onToggleDebugMode = onToggleDebugMode,
                     bottomPadding = bottomPadding,
                     onOpenExcludedApps = onOpenExcludedApps,
                     onOpenKernelFiles = onOpenKernelFiles,
@@ -367,7 +534,7 @@ private fun OverviewTab(
     aidlMode: Boolean,
     globalMode: Boolean,
     activeSessions: ImmutableList<AudioSessionInfo>,
-    viewModel: MainViewModel,
+    onSetMasterEnabled: (Boolean) -> Unit,
     bottomPadding: Dp,
     onJumpToEffects: (String?) -> Unit,
     onShowDriverDialog: () -> Unit,
@@ -449,7 +616,7 @@ private fun OverviewTab(
                                         )
                                     },
                                     checked = state.masterEnable,
-                                    onCheckedChange = viewModel::setMasterEnabled
+                                    onCheckedChange = onSetMasterEnabled
                                 )
                             }
                         )
@@ -594,7 +761,7 @@ private fun OverviewTab(
 @Composable
 private fun EffectsTab(
     state: EffectState,
-    viewModel: MainViewModel,
+    effectActions: EffectActions,
     expandController: EffectExpandController,
     jumpRequest: EffectJumpRequest?,
     bottomPadding: Dp,
@@ -718,7 +885,7 @@ private fun EffectsTab(
                                     )
                                 },
                                 checked = state.masterEnable,
-                                onCheckedChange = viewModel::setMasterEnabled
+                                onCheckedChange = effectActions::setMasterEnabled
                             )
                         }
                     )
@@ -726,7 +893,7 @@ private fun EffectsTab(
 
                 allEffectSectionsItems(
                     state = state,
-                    viewModel = viewModel,
+                    viewModel = effectActions,
                     controller = expandController,
                     scope = scope,
                     onOpenEqScreen = onOpenEqScreen,
@@ -754,7 +921,11 @@ private fun SettingsTab(
     excludedApps: Set<String>,
     kernelFileCount: Int,
     vdcFileCount: Int,
-    viewModel: MainViewModel,
+    appVersionName: String,
+    onToggleAutoStart: (Boolean) -> Unit,
+    onTogglePersistentNotification: (Boolean) -> Unit,
+    onToggleGlobalMode: (Boolean) -> Unit,
+    onToggleDebugMode: (Boolean) -> Unit,
     bottomPadding: Dp,
     onOpenExcludedApps: () -> Unit,
     onOpenKernelFiles: () -> Unit,
@@ -766,42 +937,6 @@ private fun SettingsTab(
     val backdrop = rememberBlurBackdrop()
     val blurActive = backdrop != null
     val barColor = if (blurActive) Color.Transparent else MiuixTheme.colorScheme.surface
-    val context = LocalContext.current
-    val platform = rememberPlatformToast()
-    val scope = rememberCoroutineScope()
-    var checkingSessionPermission by remember { mutableStateOf(false) }
-    val sessionModeRequiresRootToast = stringResource(R.string.settings_session_mode_requires_root)
-    val notificationPermissionDeniedToast = stringResource(R.string.settings_notification_permission_denied)
-
-    val hasNotificationPermission = {
-        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
-            PackageManager.PERMISSION_GRANTED &&
-            NotificationManagerCompat.from(context).areNotificationsEnabled()
-    }
-
-    val notificationPermissionLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            if (granted && NotificationManagerCompat.from(context).areNotificationsEnabled()) {
-                viewModel.togglePersistentNotification(true)
-            } else {
-                platform.showToast(notificationPermissionDeniedToast, long = false)
-            }
-        }
-
-    // 返回前台时若系统通知权限已被外部撤销，同步关闭开关状态
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
-        if (persistentNotification && !hasNotificationPermission()) {
-            viewModel.togglePersistentNotification(false)
-        }
-    }
-
-    val appVersionName = remember(context) {
-        try {
-            context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: ""
-        } catch (_: Exception) {
-            ""
-        }
-    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -851,7 +986,7 @@ private fun SettingsTab(
                                         )
                                     },
                                     checked = autoStart,
-                                    onCheckedChange = viewModel::toggleAutoStart
+                                    onCheckedChange = onToggleAutoStart
                                 )
                             }
                         )
@@ -869,33 +1004,7 @@ private fun SettingsTab(
                                         )
                                     },
                                     checked = persistentNotification,
-                                    onCheckedChange = { enabled ->
-                                        if (!enabled) {
-                                            viewModel.togglePersistentNotification(false)
-                                        } else {
-                                            val permGranted =
-                                                ContextCompat.checkSelfPermission(
-                                                    context,
-                                                    Manifest.permission.POST_NOTIFICATIONS,
-                                                ) == PackageManager.PERMISSION_GRANTED
-                                            when {
-                                                !permGranted -> {
-                                                    notificationPermissionLauncher.launch(
-                                                        Manifest.permission.POST_NOTIFICATIONS,
-                                                    )
-                                                }
-                                                !NotificationManagerCompat.from(context).areNotificationsEnabled() -> {
-                                                    platform.showToast(
-                                                        notificationPermissionDeniedToast,
-                                                        long = false,
-                                                    )
-                                                }
-                                                else -> {
-                                                    viewModel.togglePersistentNotification(true)
-                                                }
-                                            }
-                                        }
-                                    }
+                                    onCheckedChange = onTogglePersistentNotification
                                 )
                             }
                         )
@@ -913,29 +1022,7 @@ private fun SettingsTab(
                                         )
                                     },
                                     checked = globalMode,
-                                    onCheckedChange = { enabled ->
-                                        if (enabled) {
-                                            // 全局模式通过 session 0 生效，无需 Root 或特权权限
-                                            viewModel.toggleGlobalMode(true)
-                                        } else if (!checkingSessionPermission) {
-                                            // 关闭全局模式切回会话模式时，需具备特权应用权限或 Root 权限
-                                            checkingSessionPermission = true
-                                            scope.launch {
-                                                val granted = try {
-                                                    withContext(Dispatchers.IO) {
-                                                        AudioSessionMonitor.canUseSessionMode(context)
-                                                    }
-                                                } finally {
-                                                    checkingSessionPermission = false
-                                                }
-                                                if (granted) {
-                                                    viewModel.toggleGlobalMode(false)
-                                                } else {
-                                                    platform.showToast(sessionModeRequiresRootToast, long = false)
-                                                }
-                                            }
-                                        }
-                                    }
+                                    onCheckedChange = onToggleGlobalMode
                                 )
                             }
                         )
@@ -980,13 +1067,7 @@ private fun SettingsTab(
                                         )
                                     },
                                     checked = debugMode,
-                                    onCheckedChange = { enabled ->
-                                        if (enabled) {
-                                            viewModel.enableDebugMode()
-                                        } else {
-                                            viewModel.disableDebugMode()
-                                        }
-                                    }
+                                    onCheckedChange = onToggleDebugMode
                                 )
                             }
                         )
@@ -1146,5 +1227,143 @@ private fun collectEnabledEffects(state: EffectState): List<EnabledEffectItem> {
         if (state.cure.enable) add(EnabledEffectItem("cure", R.string.section_cure, Icons.Rounded.HealthAndSafety))
         if (state.analogX.enable) add(EnabledEffectItem("analogX", R.string.section_analogx, Icons.Rounded.Memory))
         if (state.speakerCorrection.enable) add(EnabledEffectItem("speakerOpt", R.string.section_speaker_optimization, Icons.Rounded.SpeakerPhone))
+    }
+}
+
+private fun previewEffectState(): EffectState =
+    EffectState(
+        masterEnable = true,
+        eq = EqState(
+            enable = true,
+            bandCount = 10,
+            bands = listOf(4.5, 4.0, 2.5, 1.0, 0.5, 0.5, 1.5, 2.0, 3.5, 2.5),
+        ),
+        convolver = ConvolverState(
+            enable = true,
+            kernelFile = "Dolby_Atmos.irs",
+        ),
+        bass = BassState(enable = true, frequency = 60, gain = 0.6f),
+        clarity = ClarityState(enable = true, mode = 0, gain = 0.5f),
+        activeDeviceName = "WH-1000XM5",
+        activeDeviceId = "AA:BB:CC:DD:EE:01",
+    )
+
+private fun previewDriverStatus(): DriverStatus =
+    DriverStatus(
+        installed = true,
+        versionCode = 2504,
+        versionName = "2.5.0.4",
+        architecture = "arm64-v8a",
+        streaming = true,
+        samplingRate = 48000,
+    )
+
+private fun previewActiveSessions(): ImmutableList<AudioSessionInfo> =
+    listOf(
+        AudioSessionInfo(
+            sessionId = 142,
+            packageName = "com.netease.cloudmusic",
+            enabled = true,
+            openedAt = 1710000000000L,
+            usage = AudioAttributes.USAGE_MEDIA,
+        ),
+        AudioSessionInfo(
+            sessionId = 208,
+            packageName = "com.google.android.youtube",
+            enabled = true,
+            openedAt = 1710000035000L,
+            usage = AudioAttributes.USAGE_MEDIA,
+        ),
+    ).toPersistentList()
+
+@Preview(name = "Main - Overview", showBackground = true)
+@Composable
+private fun MainOverviewPreview() {
+    ViperTheme {
+        MainScreenContent(
+            state = previewEffectState(),
+            driverStatus = previewDriverStatus(),
+            autoStart = true,
+            persistentNotification = true,
+            globalMode = false,
+            aidlMode = true,
+            debugMode = true,
+            excludedApps = setOf("com.spotify.music"),
+            activeSessions = previewActiveSessions(),
+            kernelFileCount = 3,
+            vdcFileCount = 2,
+            appVersionName = "2.1.2",
+            effectActions = PreviewEffectActions,
+            initialPage = 0,
+        )
+    }
+}
+
+@Preview(name = "Main - Effects", showBackground = true)
+@Composable
+private fun MainEffectsPreview() {
+    ViperTheme {
+        MainScreenContent(
+            state = previewEffectState(),
+            driverStatus = previewDriverStatus(),
+            autoStart = true,
+            persistentNotification = false,
+            globalMode = false,
+            aidlMode = true,
+            debugMode = false,
+            excludedApps = emptySet(),
+            activeSessions = previewActiveSessions(),
+            kernelFileCount = 3,
+            vdcFileCount = 2,
+            appVersionName = "2.1.2",
+            effectActions = PreviewEffectActions,
+            initialPage = 1,
+        )
+    }
+}
+
+@Preview(name = "Main - Settings", showBackground = true)
+@Composable
+private fun MainSettingsPreview() {
+    ViperTheme {
+        MainScreenContent(
+            state = previewEffectState(),
+            driverStatus = previewDriverStatus(),
+            autoStart = true,
+            persistentNotification = true,
+            globalMode = false,
+            aidlMode = true,
+            debugMode = true,
+            excludedApps = setOf("com.spotify.music", "com.miHoYo.Yuanshen"),
+            activeSessions = previewActiveSessions(),
+            kernelFileCount = 3,
+            vdcFileCount = 2,
+            appVersionName = "2.1.2",
+            effectActions = PreviewEffectActions,
+            initialPage = 2,
+        )
+    }
+}
+
+@Preview(name = "Main - Wide Screen", showBackground = true, widthDp = 840, heightDp = 640)
+@Composable
+private fun MainWideScreenPreview() {
+    ViperTheme {
+        MainScreenContent(
+            state = previewEffectState(),
+            driverStatus = previewDriverStatus(),
+            autoStart = true,
+            persistentNotification = true,
+            globalMode = false,
+            aidlMode = true,
+            debugMode = true,
+            excludedApps = setOf("com.spotify.music"),
+            activeSessions = previewActiveSessions(),
+            kernelFileCount = 3,
+            vdcFileCount = 2,
+            appVersionName = "2.1.2",
+            effectActions = PreviewEffectActions,
+            initialPage = 0,
+        )
     }
 }

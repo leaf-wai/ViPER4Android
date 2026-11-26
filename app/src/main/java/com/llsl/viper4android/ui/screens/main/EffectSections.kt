@@ -558,7 +558,7 @@ fun EffectSection(
 
 private fun masterLimiterCardItems(
     state: EffectState,
-    viewModel: MainViewModel
+    viewModel: EffectActions
 ): List<CardItem> {
     val outputVolume = state.out.volume
     val channelPan = state.out.channelPan
@@ -636,7 +636,7 @@ private fun masterLimiterCardItems(
 
 private fun playbackGainCardItems(
     state: EffectState,
-    viewModel: MainViewModel
+    viewModel: EffectActions
 ): List<CardItem> {
     val vals = state.playbackGainControl
     val strength = vals.strength
@@ -713,7 +713,7 @@ private fun playbackGainCardItems(
 
 private fun lufsTargetingCardItems(
     state: EffectState,
-    viewModel: MainViewModel
+    viewModel: EffectActions
 ): List<CardItem> {
     val vals = state.lufs
     val target = vals.target
@@ -783,7 +783,7 @@ private fun lufsTargetingCardItems(
 
 private fun fetCompressorCardItems(
     state: EffectState,
-    viewModel: MainViewModel
+    viewModel: EffectActions
 ): List<CardItem> {
     val vals = state.fetCompressor
     val thresholdDb = compressorRawToDb(vals.threshold)
@@ -1071,7 +1071,7 @@ private fun fetCompressorCardItems(
 
 private fun multibandCompressorCardItems(
     state: EffectState,
-    viewModel: MainViewModel,
+    viewModel: EffectActions,
     selectedTab: Int,
     onSelectTab: (Int) -> Unit
 ): List<CardItem> {
@@ -1488,7 +1488,7 @@ private fun multibandCompressorCardItems(
 
 private fun ddcCardItems(
     state: EffectState,
-    viewModel: MainViewModel
+    viewModel: EffectActions
 ): List<CardItem> {
     val device = state.ddc.device
     return listOf(
@@ -1510,7 +1510,7 @@ private fun ddcCardItems(
 
 private fun spectrumExtensionCardItems(
     state: EffectState,
-    viewModel: MainViewModel
+    viewModel: EffectActions
 ): List<CardItem> {
     val vals = state.spectrumExtension
     val strength = vals.strength
@@ -1564,7 +1564,7 @@ private fun spectrumExtensionCardItems(
 
 private fun equalizerCardItems(
     state: EffectState,
-    viewModel: MainViewModel,
+    viewModel: EffectActions,
     onOpenEqScreen: (() -> Unit)? = null
 ): List<CardItem> {
     val eqVals = state.eq
@@ -1629,7 +1629,7 @@ private fun equalizerCardItems(
 
 private fun dynamicEqCardItems(
     state: EffectState,
-    viewModel: MainViewModel,
+    viewModel: EffectActions,
     selectedTab: Int,
     onSelectTab: (Int) -> Unit
 ): List<CardItem> {
@@ -1908,7 +1908,7 @@ private fun dynamicEqCardItems(
 
 private fun convolverCardItems(
     state: EffectState,
-    viewModel: MainViewModel
+    viewModel: EffectActions
 ): List<CardItem> {
     val vals = state.convolver
     val kernel = vals.kernelFile
@@ -1955,7 +1955,7 @@ private fun convolverCardItems(
 
 private fun fieldSurroundCardItems(
     state: EffectState,
-    viewModel: MainViewModel
+    viewModel: EffectActions
 ): List<CardItem> {
     val vals = state.fieldSurround
     val widening = vals.widening
@@ -2029,7 +2029,7 @@ private fun fieldSurroundCardItems(
 
 private fun diffSurroundCardItems(
     state: EffectState,
-    viewModel: MainViewModel
+    viewModel: EffectActions
 ): List<CardItem> {
     val vals = state.diffSurround
     val delay = vals.delay
@@ -2115,7 +2115,7 @@ private fun diffSurroundCardItems(
 
 private fun stereoImagerCardItems(
     state: EffectState,
-    viewModel: MainViewModel
+    viewModel: EffectActions
 ): List<CardItem> {
     val vals = state.stereoImager
     val lowWidth = vals.lowWidth
@@ -2237,7 +2237,7 @@ private fun stereoImagerCardItems(
 
 private fun headphoneSurroundCardItems(
     state: EffectState,
-    viewModel: MainViewModel
+    viewModel: EffectActions
 ): List<CardItem> {
     val quality = state.headphoneSurround.quality
     return listOf(
@@ -2267,7 +2267,7 @@ private fun headphoneSurroundCardItems(
 
 private fun reverberationCardItems(
     state: EffectState,
-    viewModel: MainViewModel
+    viewModel: EffectActions
 ): List<CardItem> {
     val vals = state.reverb
     val roomSize = vals.roomSize
@@ -2384,7 +2384,7 @@ private fun reverberationCardItems(
 
 private fun dynamicSystemCardItems(
     state: EffectState,
-    viewModel: MainViewModel
+    viewModel: EffectActions
 ): List<CardItem> {
     val vals = state.dynamicSystem
     val dsPresetId = vals.presetId
@@ -2626,7 +2626,7 @@ private fun dynamicSystemCardItems(
 
 private fun tubeSimulatorCardItems(
     state: EffectState,
-    viewModel: MainViewModel
+    viewModel: EffectActions
 ): List<CardItem> {
     val vals = state.tubeSimulator
     val model = vals.model
@@ -2690,7 +2690,7 @@ private fun tubeSimulatorCardItems(
 
 private fun psychoacousticBassCardItems(
     state: EffectState,
-    viewModel: MainViewModel
+    viewModel: EffectActions
 ): List<CardItem> {
     val vals = state.psychoacousticBass
     val cutoff = vals.cutoff
@@ -2795,7 +2795,7 @@ private fun psychoacousticBassCardItems(
 
 private fun viperBassCardItems(
     state: EffectState,
-    viewModel: MainViewModel
+    viewModel: EffectActions
 ): List<CardItem> {
     val vals = state.bass
     val mode = vals.mode
@@ -2882,7 +2882,7 @@ private fun viperBassCardItems(
 
 private fun viperBassMonoCardItems(
     state: EffectState,
-    viewModel: MainViewModel
+    viewModel: EffectActions
 ): List<CardItem> {
     val vals = state.bassMono
     val mode = vals.mode
@@ -2969,7 +2969,7 @@ private fun viperBassMonoCardItems(
 
 private fun viperClarityCardItems(
     state: EffectState,
-    viewModel: MainViewModel
+    viewModel: EffectActions
 ): List<CardItem> {
     val vals = state.clarity
     val mode = vals.mode
@@ -3015,7 +3015,7 @@ private fun viperClarityCardItems(
 
 private fun auditoryProtectionCardItems(
     state: EffectState,
-    viewModel: MainViewModel
+    viewModel: EffectActions
 ): List<CardItem> {
     val crossfeed = state.cure.crossfeedPreset
     return listOf(
@@ -3037,7 +3037,7 @@ private fun auditoryProtectionCardItems(
 
 private fun analogXCardItems(
     state: EffectState,
-    viewModel: MainViewModel
+    viewModel: EffectActions
 ): List<CardItem> {
     val mode = state.analogX.mode
     return listOf(
@@ -3063,7 +3063,7 @@ private fun analogXCardItems(
  */
 fun LazyListScope.allEffectSectionsItems(
     state: EffectState,
-    viewModel: MainViewModel,
+    viewModel: EffectActions,
     controller: EffectExpandController,
     scope: CoroutineScope,
     onOpenEqScreen: (() -> Unit)? = null,

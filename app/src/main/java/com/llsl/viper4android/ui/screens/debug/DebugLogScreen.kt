@@ -34,6 +34,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -49,6 +50,7 @@ import com.llsl.viper4android.ui.components.UiDimens
 import com.llsl.viper4android.ui.components.layerBackdrop
 import com.llsl.viper4android.ui.components.rememberBlurBackdrop
 import com.llsl.viper4android.ui.theme.StatusColors
+import com.llsl.viper4android.ui.theme.ViperTheme
 import com.llsl.viper4android.ui.util.PlatformToast
 import com.llsl.viper4android.ui.util.horizontalCutoutPadding
 import com.llsl.viper4android.ui.util.rememberPlatformToast
@@ -96,6 +98,37 @@ fun DebugLogScreen(
     val context = LocalContext.current
     val platform = rememberPlatformToast()
     val state = remember { DebugLogState() }
+
+    DisposableEffect(state) {
+        state.start(includeFileHistory = true)
+        onDispose { state.shutdown() }
+    }
+
+    DebugLogScreenContent(
+        entries = state.visibleEntries,
+        totalCount = state.totalCount,
+        appStreamError = state.appStreamError,
+        driverStreamError = state.driverStreamError,
+        onClear = { state.clear() },
+        onExport = { ts -> exportLogs(context, platform, state, ts) },
+        onDisableDebug = onDisableDebug,
+        onBack = onBack,
+        modifier = modifier,
+    )
+}
+
+@Composable
+private fun DebugLogScreenContent(
+    entries: List<LogEntry>,
+    totalCount: Int,
+    appStreamError: String?,
+    driverStreamError: String?,
+    onClear: () -> Unit,
+    onExport: (String) -> Unit,
+    onDisableDebug: () -> Unit,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val listState = rememberLazyListState()
     var sourceFilter by remember { mutableStateOf(SourceFilter.ALL) }
     var levelFilter by remember { mutableStateOf(LevelFilter.ALL) }
@@ -103,15 +136,10 @@ fun DebugLogScreen(
     var showExportConfirm by remember { mutableStateOf(false) }
     var showTopPopup by remember { mutableStateOf(false) }
 
-    DisposableEffect(state) {
-        state.start(includeFileHistory = true)
-        onDispose { state.shutdown() }
-    }
-
-    val filteredEntries by remember(state) {
+    val filteredEntries by remember(entries) {
         derivedStateOf {
             val query = searchQuery
-            state.visibleEntries.filter { entry ->
+            entries.filter { entry ->
                 matchesSource(entry, sourceFilter) &&
                     matchesLevel(entry, levelFilter) &&
                     (query.isEmpty() || entry.raw.contains(query, ignoreCase = true))
@@ -126,7 +154,7 @@ fun DebugLogScreen(
             body = stringResource(R.string.debug_export_confirm, "$ts.app.log", "$ts.driver.log"),
             confirmLabel = stringResource(R.string.debug_export_action),
             onConfirm = {
-                exportLogs(context, platform, state, ts)
+                onExport(ts)
                 showExportConfirm = false
             },
             onDismiss = { showExportConfirm = false },
@@ -195,7 +223,7 @@ fun DebugLogScreen(
                                         index = 0,
                                         onSelectedIndexChange = {
                                             showTopPopup = false
-                                            state.clear()
+                                            onClear()
                                         },
                                     )
                                     DropdownImpl(
@@ -271,9 +299,9 @@ fun DebugLogScreen(
                         .padding(horizontal = 16.dp)
                         .padding(bottom = 8.dp),
                 ) {
-                    StreamErrorBanner(state.appStreamError, state.driverStreamError)
+                    StreamErrorBanner(appStreamError, driverStreamError)
                     Text(
-                        text = "${filteredEntries.size} / ${state.totalCount}",
+                        text = "${filteredEntries.size} / $totalCount",
                         style = MiuixTheme.textStyles.footnote1,
                         color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                     )
@@ -282,7 +310,7 @@ fun DebugLogScreen(
             if (filteredEntries.isEmpty()) {
                 item(key = "empty") {
                     DialogEmptyState(
-                        text = "0 / ${state.totalCount}",
+                        text = "0 / $totalCount",
                         modifier = Modifier.padding(horizontal = 12.dp),
                     )
                 }
@@ -577,5 +605,66 @@ private fun exportLogs(
         platform.showToast(context.getString(R.string.debug_export_done, dir.absolutePath), long = true)
     } catch (_: Exception) {
         platform.showToast(context.getString(R.string.debug_export_failed), long = false)
+    }
+}
+
+private fun previewLogEntries(): List<LogEntry> = listOf(
+    LogParser.parseApp("2026-11-26 16:00:01.102 [Service][INFO] ViPER4Android service started (AIDL mode)"),
+    LogParser.parseApp("2026-11-26 16:00:01.245 [ViewModel][DEBUG] Dispatched full effect state for WH-1000XM5"),
+    LogParser.parseDriver("11-26 16:00:01.260 I/ViPER( 1284): Driver initialized: v2.5.0.4 (48000 Hz)")!!,
+    LogParser.parseDriver("11-26 16:00:02.018 W/ViPER( 1284): Convolver kernel resampled 44100 -> 48000 Hz")!!,
+    LogParser.parseApp("2026-11-26 16:00:03.412 [Session][ERROR] Failed to attach session 315: excluded package"),
+)
+
+@Preview(name = "Debug Log - Populated", showBackground = true)
+@Composable
+private fun DebugLogScreenPopulatedPreview() {
+    val entries = previewLogEntries()
+    ViperTheme {
+        DebugLogScreenContent(
+            entries = entries,
+            totalCount = entries.size,
+            appStreamError = null,
+            driverStreamError = null,
+            onClear = {},
+            onExport = {},
+            onDisableDebug = {},
+            onBack = {},
+        )
+    }
+}
+
+@Preview(name = "Debug Log - Stream Error", showBackground = true)
+@Composable
+private fun DebugLogScreenErrorPreview() {
+    val entries = previewLogEntries().filter { it.source == LogSource.APP }
+    ViperTheme {
+        DebugLogScreenContent(
+            entries = entries,
+            totalCount = entries.size,
+            appStreamError = null,
+            driverStreamError = "logcat unavailable (root required)",
+            onClear = {},
+            onExport = {},
+            onDisableDebug = {},
+            onBack = {},
+        )
+    }
+}
+
+@Preview(name = "Debug Log - Empty", showBackground = true)
+@Composable
+private fun DebugLogScreenEmptyPreview() {
+    ViperTheme {
+        DebugLogScreenContent(
+            entries = emptyList(),
+            totalCount = 0,
+            appStreamError = null,
+            driverStreamError = null,
+            onClear = {},
+            onExport = {},
+            onDisableDebug = {},
+            onBack = {},
+        )
     }
 }

@@ -5,6 +5,11 @@
     <string name="notification_channel_description">Показывать уведомление когда ViPER4Android обрабатывает аудиопоток</string>
     <string name="notification_title">ViPER4Android</string>
     <string name="notification_text">Обработка аудиопотока активна</string>
+    <string name="notification_status_disabled">Выключено</string>
+    <string name="notification_title_format">%1$s · %2$s</string>
+    <string name="notification_session_count">Сессии (%1$d)</string>
+    <string name="notification_action_enable">Включить</string>
+    <string name="notification_action_disable">Выключить</string>
     <string name="notification_bulk_op_channel_name">Групповые операции</string>
     <string name="notification_bulk_op_channel_description">Прогресс выполнения групповых операций</string>
     <string name="qs_tile_master_label">Обработка аудиопотока V4A</string>
@@ -146,12 +151,12 @@
 
     <!-- Tube Simulator -->
     <string name="section_tube_simulator">Ламповый усилитель</string>
-    <string name="label_tube_model">Tube Model</string>
+    <string name="label_tube_model">Модель лампы</string>
     <string name="label_tube_model_12ax7">12AX7</string>
     <string name="label_tube_model_12au7">12AU7</string>
     <string name="label_tube_model_6n1p">6N1P</string>
-    <string name="label_tube_drive">Drive</string>
-    <string name="label_tube_mix">Wet/Dry Mix</string>
+    <string name="label_tube_drive">Насыщение</string>
+    <string name="label_tube_mix">Баланс эффекта</string>
 
     <!-- Psychoacoustic Bass -->
     <string name="section_psycho_bass">Психоакустический Bass</string>
@@ -218,6 +223,9 @@
     <string name="preset_load_confirm">Загрузить «%1$s»? Текущие настройки будут заменены.</string>
     <string name="preset_delete_title">Удаление профиля(пресета)</string>
     <string name="preset_delete_confirm">Удалить «%1$s»? Это действие нельзя отменить.</string>
+    <string name="preset_delete_selected_title">Удалить выбранные профили</string>
+    <string name="preset_delete_selected_confirm">Удалить выбранные профили (%1$d)? Это действие нельзя отменить.</string>
+    <string name="preset_deleted_count_toast">Удалено профилей: %1$d</string>
     <string name="preset_tap_for_details">Подробнее</string>
     <string name="preset_label_created">Создан</string>
     <string name="preset_label_updated">Последнее обновление</string>
@@ -229,6 +237,10 @@
     <string name="driver_architecture">Архитектура</string>
     <string name="driver_streaming">Аудиопоток</string>
     <string name="driver_sampling_rate">Частота дискретизации</string>
+    <string name="driver_root_permission">Права Root</string>
+    <string name="driver_root_granted">Предоставлены</string>
+    <string name="driver_root_denied">Не предоставлены</string>
+    <string name="driver_root_checking">Проверка\u2026</string>
     <string name="status_active">Активен</string>
     <string name="status_inactive">Неактивен</string>
     <string name="status_unknown">Неизвестно</string>
@@ -238,6 +250,7 @@
     <string name="settings_files_section">Файлы</string>
     <string name="settings_about_section">О приложении</string>
     <string name="settings_auto_start">Автозапуск при загрузке</string>
+    <string name="settings_persistent_notification">Постоянное уведомление</string>
     <string name="settings_aidl_mode">Режим AIDL</string>
     <string name="settings_global_mode">Глобальный режим</string>
     <string name="settings_excluded_apps">Исключенные приложения</string>
@@ -245,6 +258,8 @@
     <string name="settings_import_kernel">Импортировать импульс</string>
     <string name="settings_import_vdc">Импортировать VDC</string>
     <string name="settings_auto_start_desc">Запуск аудиослужбы V4A при загрузке устройства</string>
+    <string name="settings_persistent_notification_desc">Отображать статус драйвера в реальном времени в панели уведомлений</string>
+    <string name="settings_notification_permission_denied">Для включения постоянного уведомления требуется разрешение на уведомления</string>
     <string name="settings_global_mode_desc">Применять эффекты глобально для всей системы</string>
     <string name="settings_session_mode_requires_root">Режим сессий требует прав root или установки как системное приложение</string>
     <string name="settings_global_mode_fallback_toast">Права root недоступны, автоматически включён глобальный режим</string>
@@ -290,13 +305,20 @@
     <string name="device_label_address">Адрес</string>
     <string name="device_label_last_conn">Последнее подключение</string>
     <string name="device_no_devices">Нет сохранённых устройств</string>
+    <string name="device_empty_desc">Аудиоустройства автоматически появятся здесь после подключения</string>
     <string name="device_rename_title">Переименование устройства</string>
+    <string name="device_rename_hint">Имя устройства</string>
+    <string name="device_renamed_toast">Устройство переименовано: %1$s</string>
     <string name="device_update_title">Обновление пресета устройства</string>
     <string name="device_update_confirm">Перезаписать пресет «%1$s» текущими настройками? Это действие нельзя отменить.</string>
     <string name="device_load_title">Загрузка пресета устройства</string>
     <string name="device_load_confirm">Загрузить пресет \"%1$s\"? Текущие настройки будут заменены.</string>
     <string name="device_delete_title">Удаление пресета устройства</string>
     <string name="device_delete_confirm">Удалить сохраненный пресет для \"%1$s\"? Это действие нельзя отменить.</string>
+    <string name="device_deleted_toast">Пресет устройства удалён: %1$s</string>
+    <string name="device_delete_selected_title">Удалить выбранные устройства</string>
+    <string name="device_delete_selected_confirm">Удалить сохранённые пресеты для выбранных устройств (%1$d)? Встроенные и активные устройства будут сохранены.</string>
+    <string name="device_deleted_count_toast">Удалено пресетов устройств: %1$d</string>
 
     <!-- Actions -->
     <string name="action_save">Сохранить</string>
@@ -358,25 +380,62 @@
     <string name="ds_device_common_headphone_v1">Стандартные наушники (v1)</string>
     <string name="ds_device_common_earphone_v1">Внутриканальные наушники (v1)</string>
 
+    <!-- Navigation Tabs -->
+    <string name="tab_overview">Обзор</string>
+    <string name="tab_effects">Эффекты</string>
+    <string name="tab_preset_device">Профили</string>
+    <string name="tab_settings">Настройки</string>
+
+    <!-- Common MIUIX Dialog & Action -->
+    <string name="common_not_modified">Без изменений</string>
+    <string name="common_cancel">Отмена</string>
+    <string name="common_confirm">Подтвердить</string>
+    <string name="common_collapse_all">Свернуть все</string>
+    <string name="common_expand_all">Развернуть все</string>
+    <string name="common_refresh">Обновить</string>
+    <string name="common_pull_to_refresh">Потяните вниз для обновления</string>
+    <string name="common_release_to_refresh">Отпустите для обновления</string>
+    <string name="common_refreshing">Обновление\u2026</string>
+    <string name="common_refresh_complete">Успешно обновлено</string>
+    <string name="common_more">Ещё</string>
+
     <!-- Overview Tab -->
+    <string name="overview_master_control">Общее управление</string>
+    <string name="overview_master_summary_on">Обработка звука включена</string>
+    <string name="overview_master_summary_off">Обработка звука выключена</string>
+    <string name="overview_current_device">Активное устройство</string>
+    <string name="overview_driver_section">Статус драйвера</string>
     <string name="overview_driver_working">Работает</string>
     <string name="overview_driver_installed">Установлен</string>
     <string name="overview_driver_not_installed">Не установлен</string>
     <string name="overview_driver_version_format">Версия: %1$s</string>
     <string name="overview_driver_mode">Режим работы</string>
     <string name="overview_status_standby">Ожидание</string>
+    <string name="overview_mode_root">ROOT</string>
     <string name="overview_mode_aidl">AIDL</string>
     <string name="overview_mode_legacy">Legacy</string>
+    <string name="overview_mode_global">Глобальный</string>
+    <string name="overview_mode_session">Сессии</string>
 
-    <!-- Common & Presets -->
-    <string name="common_more">Ещё</string>
+    <!-- Effects Tab -->
+    <string name="effects_enabled_count">Включено: %1$d</string>
+    <string name="effects_tap_to_edit_eq">Нажмите на график для открытия редактора эквалайзера</string>
+    <string name="effects_add_band">Добавить полосу</string>
+    <string name="effects_band_title">Полоса %1$d</string>
+
+    <!-- Presets -->
     <string name="preset_section_title">Сохранённые профили</string>
     <string name="preset_empty_desc">Сохраните текущие настройки звука или импортируйте файл профиля .json</string>
+    <string name="device_section_title">Аудиоустройства</string>
     <string name="preset_loaded_toast">Загружен профиль: %1$s</string>
     <string name="preset_saved_toast">Сохранён профиль: %1$s</string>
     <string name="preset_updated_toast">Обновлён профиль: %1$s</string>
     <string name="preset_renamed_toast">Переименован профиль: %1$s</string>
     <string name="preset_deleted_toast">Удалён профиль: %1$s</string>
+    <string name="device_preset_loaded_toast">Загружен пресет устройства: %1$s</string>
+    <string name="device_preset_updated_toast">Обновлён пресет устройства: %1$s</string>
+    <string name="device_actions_title">Действия с устройством</string>
+    <string name="preset_actions_title">Действия с профилем</string>
 
     <!-- Imported Audio Files Management -->
     <string name="files_kernel_title">Файлы импульсов</string>
@@ -402,6 +461,43 @@
     <string name="files_delete_selected_title">Удалить выбранные файлы</string>
     <string name="files_delete_selected_confirm">Удалить выбранные файлы (%1$d)? Это действие нельзя отменить.</string>
     <string name="files_deleted_count_toast">Удалено файлов: %1$d</string>
+
+    <!-- Audio Sessions Management -->
+    <string name="overview_session_management">Аудиосессии</string>
+    <string name="overview_sessions_processing_summary">Обрабатывается: %1$d</string>
+    <string name="overview_sessions_active_summary">Обрабатывается %1$d из %2$d</string>
+    <string name="overview_sessions_empty_summary">Нет активных аудиопотоков</string>
+    <string name="overview_sessions_master_off_summary">Общий переключатель выключен</string>
+    <string name="sessions_title">Аудиосессии</string>
+    <string name="sessions_status_processing">Обработка</string>
+    <string name="sessions_status_disabled">Выключено</string>
+    <string name="sessions_id_badge">Сессия #%1$d</string>
+    <string name="sessions_unknown_app">Неизвестное приложение</string>
+    <string name="sessions_uid_format">UID %1$s</string>
+    <string name="sessions_usage_media">Медиа</string>
+    <string name="sessions_usage_game">Игра</string>
+    <string name="sessions_usage_navigation">Навигация</string>
+    <string name="sessions_usage_voice">Голос</string>
+    <string name="sessions_usage_alarm">Будильник</string>
+    <string name="sessions_usage_notification">Уведомление</string>
+    <string name="sessions_usage_assistant">Ассистент</string>
+    <string name="sessions_empty_title">Нет активных сессий</string>
+    <string name="sessions_empty_desc">Аудиопотоки музыкальных, видео- и игровых приложений автоматически появятся здесь во время воспроизведения</string>
+    <string name="sessions_empty_master_off_title">Общий переключатель выключен</string>
+    <string name="sessions_empty_master_off_desc">Включите главный переключатель, чтобы определять и обрабатывать аудиосессии приложений</string>
+    <string name="sessions_empty_global_mode_title">Активен глобальный режим</string>
+    <string name="sessions_empty_global_mode_desc">Управление сессиями доступно только в режиме сессий. Отключите глобальный режим в настройках для управления потоками по приложениям</string>
+    <string name="sessions_action_enable">Включить</string>
+    <string name="sessions_action_disable">Выключить</string>
+    <string name="sessions_action_exclude">Исключить приложение</string>
+    <string name="sessions_exclude_single_title">Исключить приложение</string>
+    <string name="sessions_exclude_single_confirm">Добавить «%1$s» в исключённые приложения и прекратить обработку его аудиосессий?</string>
+    <string name="sessions_exclude_multi_title">Исключить выбранные приложения</string>
+    <string name="sessions_exclude_multi_confirm">Добавить выбранные приложения (%1$d) в исключённые и прекратить обработку их аудиосессий?</string>
+    <string name="sessions_excluded_single_toast">Исключено: %1$s</string>
+    <string name="sessions_excluded_multi_toast">Исключено приложений: %1$d</string>
+    <string name="sessions_enabled_count_toast">Включено сессий: %1$d</string>
+    <string name="sessions_disabled_count_toast">Выключено сессий: %1$d</string>
 
     <!-- About -->
     <string name="about_title">О приложении</string>

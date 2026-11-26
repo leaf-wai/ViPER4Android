@@ -122,7 +122,8 @@ class MainViewModel
         application: Application,
         private val repository: ViperRepository,
         private val updateChecker: UpdateChecker,
-    ) : AndroidViewModel(application) {
+    ) : AndroidViewModel(application),
+        EffectActions {
         companion object {
             private const val NOTIFY_ID_PRESET_IMPORT = 2
             private const val NOTIFY_ID_PRESET_CLEAR = 3
@@ -145,10 +146,10 @@ class MainViewModel
         val driverStatus: StateFlow<DriverStatus>
             field: MutableStateFlow<DriverStatus> = MutableStateFlow(DriverStatus())
 
-        val vdcFileList: StateFlow<List<String>>
+        override val vdcFileList: StateFlow<List<String>>
             field: MutableStateFlow<List<String>> = MutableStateFlow(emptyList())
 
-        val kernelFileList: StateFlow<List<String>>
+        override val kernelFileList: StateFlow<List<String>>
             field: MutableStateFlow<List<String>> = MutableStateFlow(emptyList())
 
         val vdcFileItems: StateFlow<List<ManagedAudioFile>>
@@ -272,7 +273,7 @@ class MainViewModel
 
         private val persistJobs = mutableMapOf<String, Job>()
 
-        fun <T> applyPref(
+        override fun <T> applyPref(
             pref: EffectPref<T>,
             value: T,
         ) {
@@ -327,11 +328,11 @@ class MainViewModel
             return if (mutable.size > count) mutable.take(count) else mutable.toList()
         }
 
-        fun <E> applyBandPref(
+        override fun <E> applyBandPref(
             pref: ListPref<E>,
             band: Int,
             value: E,
-            count: Int = 5,
+            count: Int,
         ) {
             val updated = replaceAt(pref.get(uiState.value), band, value, pref.padValue, count)
             applyPref(pref, updated)
@@ -455,13 +456,13 @@ class MainViewModel
             service.dispatchFullState(uiState.value)
         }
 
-        fun setMasterEnabled(enabled: Boolean) {
+        override fun setMasterEnabled(enabled: Boolean) {
             FileLogger.i("ViewModel", "Master: ${if (enabled) "ON" else "OFF"}")
             applyPref(Effects.masterEnable, enabled)
             dispatchFullState()
         }
 
-        fun setConvolverKernel(fileName: String) {
+        override fun setConvolverKernel(fileName: String) {
             FileLogger.i("ViewModel", "Convolver kernel: $fileName")
             applyPref(Effects.convolver.kernelFile, fileName)
             if (!uiState.value.convolver.enable) return
@@ -479,7 +480,7 @@ class MainViewModel
             }
         }
 
-        fun setDdcDevice(name: String) {
+        override fun setDdcDevice(name: String) {
             FileLogger.i("ViewModel", "DDC device: $name")
             applyPref(Effects.ddc.device, name)
             if (!uiState.value.ddc.enable || !uiState.value.masterEnable) return
@@ -507,7 +508,7 @@ class MainViewModel
             }
         }
 
-        fun setEqPreset(presetId: Long) {
+        override fun setEqPreset(presetId: Long) {
             viewModelScope.launch {
                 val preset = repository.getEqPresetById(presetId) ?: return@launch
                 val bands: List<Double> =
@@ -527,7 +528,7 @@ class MainViewModel
             }
         }
 
-        fun setEqBands(bands: List<Double>) {
+        override fun setEqBands(bands: List<Double>) {
             applyPref(Effects.equalizer.presetId, null)
             applyPref(Effects.equalizer.bands, bands)
             uiState.update { state ->
@@ -539,7 +540,7 @@ class MainViewModel
             }
         }
 
-        fun setEqBandCount(count: Int) {
+        override fun setEqBandCount(count: Int) {
             val state = uiState.value
             val oldCount = state.eq.bandCount
             FileLogger.d("ViewModel", "EQ band count: $oldCount -> $count")
@@ -574,7 +575,7 @@ class MainViewModel
             loadEqPresetsForBandCount(count)
         }
 
-        fun addEqPreset(name: String) {
+        override fun addEqPreset(name: String) {
             val state = uiState.value
             val bandsStr =
                 state.eq.bands.joinToString(";") {
@@ -592,7 +593,7 @@ class MainViewModel
             }
         }
 
-        fun deleteEqPreset(presetId: Long) {
+        override fun deleteEqPreset(presetId: Long) {
             viewModelScope.launch {
                 repository.deleteEqPresetById(presetId)
                 if (uiState.value.eq.presetId == presetId) {
@@ -601,44 +602,44 @@ class MainViewModel
             }
         }
 
-        fun resetEqBands() {
+        override fun resetEqBands() {
             val bandCount = uiState.value.eq.bandCount
             val flat = List(bandCount) { 0.0 }
             setEqBands(flat)
             applyPref(Effects.equalizer.presetId, null)
         }
 
-        fun setDynamicSystemXLow(value: Int) {
+        override fun setDynamicSystemXLow(value: Int) {
             applyPref(Effects.dynamicSystem.presetId, null)
             applyPref(Effects.dynamicSystem.xLow, value)
         }
 
-        fun setDynamicSystemXHigh(value: Int) {
+        override fun setDynamicSystemXHigh(value: Int) {
             applyPref(Effects.dynamicSystem.presetId, null)
             applyPref(Effects.dynamicSystem.xHigh, value)
         }
 
-        fun setDynamicSystemYLow(value: Int) {
+        override fun setDynamicSystemYLow(value: Int) {
             applyPref(Effects.dynamicSystem.presetId, null)
             applyPref(Effects.dynamicSystem.yLow, value)
         }
 
-        fun setDynamicSystemYHigh(value: Int) {
+        override fun setDynamicSystemYHigh(value: Int) {
             applyPref(Effects.dynamicSystem.presetId, null)
             applyPref(Effects.dynamicSystem.yHigh, value)
         }
 
-        fun setDynamicSystemSideGainLow(value: Float) {
+        override fun setDynamicSystemSideGainLow(value: Float) {
             applyPref(Effects.dynamicSystem.presetId, null)
             applyPref(Effects.dynamicSystem.sideGainLow, value)
         }
 
-        fun setDynamicSystemSideGainHigh(value: Float) {
+        override fun setDynamicSystemSideGainHigh(value: Float) {
             applyPref(Effects.dynamicSystem.presetId, null)
             applyPref(Effects.dynamicSystem.sideGainHigh, value)
         }
 
-        fun setDynamicSystemPreset(presetId: Long) {
+        override fun setDynamicSystemPreset(presetId: Long) {
             viewModelScope.launch {
                 val preset = repository.getDsPresetById(presetId) ?: return@launch
                 applyPref(Effects.dynamicSystem.presetId, presetId)
@@ -651,7 +652,7 @@ class MainViewModel
             }
         }
 
-        fun addDynamicSystemPreset(name: String) {
+        override fun addDynamicSystemPreset(name: String) {
             val v = uiState.value.dynamicSystem
             viewModelScope.launch {
                 val id =
@@ -670,7 +671,7 @@ class MainViewModel
             }
         }
 
-        fun deleteDynamicSystemPreset(presetId: Long) {
+        override fun deleteDynamicSystemPreset(presetId: Long) {
             viewModelScope.launch {
                 repository.deleteDsPresetById(presetId)
                 if (uiState.value.dynamicSystem.presetId == presetId) {
@@ -679,7 +680,7 @@ class MainViewModel
             }
         }
 
-        fun resetDynamicSystemCoefficients() {
+        override fun resetDynamicSystemCoefficients() {
             applyPref(Effects.dynamicSystem.presetId, null)
             applyPref(Effects.dynamicSystem.xLow, Effects.dynamicSystem.xLow.defaultValue)
             applyPref(Effects.dynamicSystem.xHigh, Effects.dynamicSystem.xHigh.defaultValue)
@@ -689,7 +690,7 @@ class MainViewModel
             applyPref(Effects.dynamicSystem.sideGainHigh, Effects.dynamicSystem.sideGainHigh.defaultValue)
         }
 
-        fun addDynamicEqBand() {
+        override fun addDynamicEqBand() {
             val state = uiState.value
             val cur = state.dynamicEq
             if (cur.bandCount >= 10) return
@@ -716,7 +717,7 @@ class MainViewModel
             applyPref(Effects.dynamicEq.bandCount, newCount)
         }
 
-        fun removeDynamicEqBand(index: Int) {
+        override fun removeDynamicEqBand(index: Int) {
             val state = uiState.value
             val cur = state.dynamicEq
             if (cur.bandCount <= 1) return
@@ -735,7 +736,7 @@ class MainViewModel
             applyPref(Effects.dynamicEq.filterTypes, cur.filterTypes.removeBand())
         }
 
-        fun setPlaybackGainControlEnabled(enabled: Boolean) {
+        override fun setPlaybackGainControlEnabled(enabled: Boolean) {
             applyPref(Effects.playbackGainControl.enable, enabled)
             if (enabled) {
                 val v = uiState.value.playbackGainControl
@@ -745,7 +746,7 @@ class MainViewModel
             }
         }
 
-        fun setLufsEnabled(enabled: Boolean) {
+        override fun setLufsEnabled(enabled: Boolean) {
             applyPref(Effects.lufs.enable, enabled)
             if (enabled) {
                 val v = uiState.value.lufs
@@ -755,7 +756,7 @@ class MainViewModel
             }
         }
 
-        fun setFetCompressorEnabled(enabled: Boolean) {
+        override fun setFetCompressorEnabled(enabled: Boolean) {
             applyPref(Effects.fetCompressor.enable, enabled)
             if (enabled) {
                 val v = uiState.value.fetCompressor
@@ -769,7 +770,7 @@ class MainViewModel
             }
         }
 
-        fun setMultibandCompressorEnabled(enabled: Boolean) {
+        override fun setMultibandCompressorEnabled(enabled: Boolean) {
             applyPref(Effects.multibandCompressor.enable, enabled)
             if (enabled) {
                 val mbc = Effects.multibandCompressor
@@ -826,7 +827,7 @@ class MainViewModel
             }
         }
 
-        fun setDdcEnabled(enabled: Boolean) {
+        override fun setDdcEnabled(enabled: Boolean) {
             ddcJob?.cancel()
             if (!enabled) {
                 applyPref(Effects.ddc.enable, false)
@@ -862,7 +863,7 @@ class MainViewModel
                 }
         }
 
-        fun setSpectrumExtensionEnabled(enabled: Boolean) {
+        override fun setSpectrumExtensionEnabled(enabled: Boolean) {
             applyPref(Effects.spectrumExtension.enable, enabled)
             if (enabled) {
                 val v = uiState.value.spectrumExtension
@@ -871,7 +872,7 @@ class MainViewModel
             }
         }
 
-        fun setEqEnabled(enabled: Boolean) {
+        override fun setEqEnabled(enabled: Boolean) {
             applyPref(Effects.equalizer.enable, enabled)
             if (enabled) {
                 val v = uiState.value.eq
@@ -880,7 +881,7 @@ class MainViewModel
             }
         }
 
-        fun setDynamicEqEnabled(enabled: Boolean) {
+        override fun setDynamicEqEnabled(enabled: Boolean) {
             applyPref(Effects.dynamicEq.enable, enabled)
             if (enabled) {
                 val count = uiState.value.dynamicEq.bandCount
@@ -916,7 +917,7 @@ class MainViewModel
             }
         }
 
-        fun setConvolverEnabled(enabled: Boolean) {
+        override fun setConvolverEnabled(enabled: Boolean) {
             applyPref(Effects.convolver.enable, enabled)
             if (enabled) {
                 val v = uiState.value.convolver
@@ -928,7 +929,7 @@ class MainViewModel
             }
         }
 
-        fun setFieldSurroundEnabled(enabled: Boolean) {
+        override fun setFieldSurroundEnabled(enabled: Boolean) {
             applyPref(Effects.fieldSurround.enable, enabled)
             if (enabled) {
                 val v = uiState.value.fieldSurround
@@ -938,7 +939,7 @@ class MainViewModel
             }
         }
 
-        fun setDiffSurroundEnabled(enabled: Boolean) {
+        override fun setDiffSurroundEnabled(enabled: Boolean) {
             applyPref(Effects.diffSurround.enable, enabled)
             if (enabled) {
                 val v = uiState.value.diffSurround
@@ -949,7 +950,7 @@ class MainViewModel
             }
         }
 
-        fun setStereoImagerEnabled(enabled: Boolean) {
+        override fun setStereoImagerEnabled(enabled: Boolean) {
             applyPref(Effects.stereoImager.enable, enabled)
             if (enabled) {
                 val v = uiState.value.stereoImager
@@ -961,7 +962,7 @@ class MainViewModel
             }
         }
 
-        fun setHeadphoneSurroundEnabled(enabled: Boolean) {
+        override fun setHeadphoneSurroundEnabled(enabled: Boolean) {
             applyPref(Effects.headphoneSurround.enable, enabled)
             if (enabled) {
                 val v = uiState.value.headphoneSurround
@@ -969,7 +970,7 @@ class MainViewModel
             }
         }
 
-        fun setReverbEnabled(enabled: Boolean) {
+        override fun setReverbEnabled(enabled: Boolean) {
             applyPref(Effects.reverb.enable, enabled)
             if (enabled) {
                 val v = uiState.value.reverb
@@ -981,7 +982,7 @@ class MainViewModel
             }
         }
 
-        fun setDynamicSystemEnabled(enabled: Boolean) {
+        override fun setDynamicSystemEnabled(enabled: Boolean) {
             applyPref(Effects.dynamicSystem.enable, enabled)
             if (enabled) {
                 val v = uiState.value.dynamicSystem
@@ -995,7 +996,7 @@ class MainViewModel
             }
         }
 
-        fun setTubeSimulatorEnabled(enabled: Boolean) {
+        override fun setTubeSimulatorEnabled(enabled: Boolean) {
             applyPref(Effects.tubeSimulator.enable, enabled)
             if (enabled) {
                 val v = uiState.value.tubeSimulator
@@ -1005,7 +1006,7 @@ class MainViewModel
             }
         }
 
-        fun setPsychoacousticBassEnabled(enabled: Boolean) {
+        override fun setPsychoacousticBassEnabled(enabled: Boolean) {
             applyPref(Effects.psychoacousticBass.enable, enabled)
             if (enabled) {
                 val v = uiState.value.psychoacousticBass
@@ -1016,7 +1017,7 @@ class MainViewModel
             }
         }
 
-        fun setBassEnabled(enabled: Boolean) {
+        override fun setBassEnabled(enabled: Boolean) {
             applyPref(Effects.bass.enable, enabled)
             if (enabled) {
                 val v = uiState.value.bass
@@ -1027,7 +1028,7 @@ class MainViewModel
             }
         }
 
-        fun setBassMonoEnabled(enabled: Boolean) {
+        override fun setBassMonoEnabled(enabled: Boolean) {
             applyPref(Effects.bassMono.enable, enabled)
             if (enabled) {
                 val v = uiState.value.bassMono
@@ -1038,7 +1039,7 @@ class MainViewModel
             }
         }
 
-        fun setClarityEnabled(enabled: Boolean) {
+        override fun setClarityEnabled(enabled: Boolean) {
             applyPref(Effects.clarity.enable, enabled)
             if (enabled) {
                 val v = uiState.value.clarity
@@ -1047,7 +1048,7 @@ class MainViewModel
             }
         }
 
-        fun setCureEnabled(enabled: Boolean) {
+        override fun setCureEnabled(enabled: Boolean) {
             applyPref(Effects.cure.enable, enabled)
             if (enabled) {
                 val v = uiState.value.cure
@@ -1055,7 +1056,7 @@ class MainViewModel
             }
         }
 
-        fun setAnalogXEnabled(enabled: Boolean) {
+        override fun setAnalogXEnabled(enabled: Boolean) {
             applyPref(Effects.analogX.enable, enabled)
             if (enabled) {
                 val v = uiState.value.analogX
@@ -1063,7 +1064,7 @@ class MainViewModel
             }
         }
 
-        fun setSpeakerCorrectionEnabled(enabled: Boolean) {
+        override fun setSpeakerCorrectionEnabled(enabled: Boolean) {
             applyPref(Effects.speakerCorrection.enable, enabled)
         }
 
@@ -1574,7 +1575,7 @@ class MainViewModel
             }
         }
 
-        fun deleteKernelFile(fileName: String): Boolean {
+        override fun deleteKernelFile(fileName: String): Boolean {
             return try {
                 val file = File(getFilesDir("Kernel"), fileName)
                 if (!file.exists()) return false
