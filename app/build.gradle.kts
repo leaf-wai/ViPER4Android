@@ -13,9 +13,18 @@ val localProps =
         if (f.exists()) f.inputStream().use(::load)
     }
 
+fun signingProp(name: String): String {
+    val local = localProps.getProperty(name).orEmpty()
+    return local.ifEmpty { providers.environmentVariable(name).orNull.orEmpty() }
+}
+
 android {
     namespace = "com.llsl.viper4android"
-    compileSdk = 37
+    compileSdk {
+        version = release(37) {
+            minorApiLevel = 2
+        }
+    }
 
     defaultConfig {
         applicationId = "com.leaf.viper4android"
@@ -29,14 +38,14 @@ android {
         generateLocaleConfig = true
     }
 
-    val keystoreFile = localProps.getProperty("KEYSTORE_FILE", "")
+    val keystoreFile = signingProp("KEYSTORE_FILE")
     if (keystoreFile.isNotEmpty()) {
         signingConfigs {
             create("release") {
                 storeFile = file(keystoreFile)
-                storePassword = localProps.getProperty("KEYSTORE_PASSWORD", "")
-                keyAlias = localProps.getProperty("KEY_ALIAS", "")
-                keyPassword = localProps.getProperty("KEY_PASSWORD", "")
+                storePassword = signingProp("KEYSTORE_PASSWORD")
+                keyAlias = signingProp("KEY_ALIAS")
+                keyPassword = signingProp("KEY_PASSWORD")
             }
         }
     }
