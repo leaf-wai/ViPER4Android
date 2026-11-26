@@ -18,11 +18,11 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.llsl.viper4android"
+        applicationId = "com.leaf.viper4android"
         minSdk = 33
         targetSdk = 37
-        versionCode = 1
-        versionName = "2.1.2"
+        versionCode = 100
+        versionName = "1.0.0"
     }
 
     androidResources {

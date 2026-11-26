@@ -1,6 +1,6 @@
 # ViPER4Android
 
-Material Design 3 UI for ViPER4Android FX. Full feature set of the ViPER4Android DSP engine with a modern interface.
+Miuix UI redesign fork of ViPER4Android FX. Full feature set of the ViPER4Android DSP engine with a HyperOS-inspired Jetpack Compose interface and enhanced audio management features.
 
 ## Features
 
@@ -39,18 +39,23 @@ Material Design 3 UI for ViPER4Android FX. Full feature set of the ViPER4Android
 
 ### App Features
 
-- Material Design 3 with dynamic theming
-- AIDL and legacy (non-AIDL) HAL support
-- Per-device profile management and auto switching
-- Preset import / export
-- Global mode and per-app mode
-- In-app log viewer (tap `Driver Version` 7 times in Settings)
-- Audio effects documentation (long press each effect)
-- In-app update checker (press app version in Settings)
+- **Miuix UI Redesign**: HyperOS-inspired Jetpack Compose UI with automatic light/dark theming, squircle styling, frosted glass navigation bars, predictive back transitions, and adaptive wide-screen layouts (collapsible `NavigationRail` and centered content on tablets/foldables)
+- **3-Tab Layout (Overview / Effects / Settings)**:
+  - **Overview**: Real-time driver status card (working/standby status, version, AIDL/Legacy & Global/Session mode, root permission diagnostics), master toggle, active device shortcut, active sessions entry, and quick-jump list of enabled effects
+  - **Effects**: Collapsible effect cards with expand/collapse all toggle, dedicated full-screen Equalizer editor, and long-press documentation for each audio effect
+  - **Settings**: Auto-start on boot, persistent notification, Global/Session mode switching, excluded apps, debug mode, imported file managers, and About page
+- **Audio Session Management (Per-App Mode)**: Inspect active per-app audio streams with app icons, session IDs, and audio usage tags; toggle processing per session, batch enable/disable via multi-select, or exclude apps directly
+- **Persistent Notification**: Optional status bar notification showing real-time driver status, active mode/session count, and a quick Turn On / Turn Off action button
+- **Excluded Apps Management**: Searchable app list with system app filtering and excluded apps pinned to the top
+- **Per-Device Profiles & Presets**: Dedicated management screens with automatic device profile switching, v2.1 JSON preset import/export, rename/update, and multi-select batch deletion
+- **Kernel & VDC File Management**: Dedicated managers for imported Convolver (`.wav` / `.irs`) and ViPER-DDC (`.vdc`) files with one-tap apply, rename, and multi-select batch deletion
+- **AIDL & Legacy HAL Support**: Automatic detection of AIDL and legacy (non-AIDL) audio HALs, supporting both Global mode and Per-App Session mode (with automatic fallback to Global mode when session permissions are unavailable)
+- **Debug Log Viewer**: Toggle `Debug mode` in Settings to access live App & Driver logs with source/level filtering, search, and export
+- **About Screen & In-App Updater**: Dynamic shader hero header, GitHub Releases update checker with in-app APK download/install, repository links, and open-source licenses
 
 ## Installation
 
-1. Download the latest APK from the [Releases](https://github.com/likelikeslike/ViPER4Android/releases)
+1. Download the latest APK from the [Releases](https://github.com/leaf-wai/ViPER4Android/releases)
 2. Install the APK
 3. Flash the Magisk module from [ViPERFX_RE](https://github.com/likelikeslike/ViPERFX_RE) (or the AIDL variant)
 4. Reboot
@@ -95,7 +100,7 @@ Material Design 3 UI for ViPER4Android FX. Full feature set of the ViPER4Android
     > <!-- /system/etc/permissions/privapp-permissions-viper4android.xml -->
     > <?xml version="1.0" encoding="utf-8"?>
     > <permissions>
-    >     <privapp-permissions package="com.llsl.viper4android">
+    >     <privapp-permissions package="com.leaf.viper4android">
     >         <permission name="android.permission.MODIFY_AUDIO_ROUTING"/>
     >     </privapp-permissions>
     > </permissions>
@@ -191,9 +196,7 @@ name comes from the device's reported product name (e.g. "Galaxy Buds Pro"), wit
 
 ### Managing profiles
 
-Open the **Devices dialog** to manage saved profiles. There you can **save** the current settings to
-a device, **load** a device's profile into the current settings, **rename** a device, or **delete** a
-profile. Deleting a profile removes its saved settings, the device gets a fresh profile the next time it connects.
+Open **Active Device** on the Overview tab to access the **Audio Devices** screen. Tap a device to **load** its profile into the current settings, or long-press / enter multi-select mode to **update** a device with current settings, **rename** a device, or **delete** profiles in batch. Deleting a profile removes its saved settings (built-in and active devices are protected); the device gets a fresh profile the next time it connects.
 
 ## Root Access
 
