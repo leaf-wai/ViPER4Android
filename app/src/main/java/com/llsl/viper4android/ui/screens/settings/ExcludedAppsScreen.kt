@@ -112,21 +112,13 @@ private fun ExcludedAppsScreenContent(
     var showSystemApps by remember { mutableStateOf(false) }
 
     val filtered = remember(installedApps, excludedApps, showSystemApps, query) {
-        if (installedApps == null) {
-            null
-        } else {
-            val missing = excludedApps
-                .filter { pkg -> installedApps.none { it.packageName == pkg } }
-                .map { InstalledAppInfo(packageName = it, label = it, isSystemApp = false) }
-            val all = (installedApps + missing).sortedBy { it.label.lowercase() }
-            all.filter { app ->
-                (showSystemApps || !app.isSystemApp) &&
-                    (
-                        query.isBlank() ||
-                            app.label.contains(query, ignoreCase = true) ||
-                            app.packageName.contains(query, ignoreCase = true)
-                        )
-            }
+        installedApps?.let { apps ->
+            filterAndSortExcludedApps(
+                installedApps = apps,
+                excludedApps = excludedApps,
+                showSystemApps = showSystemApps,
+                query = query,
+            )
         }
     }
 
@@ -279,17 +271,13 @@ fun ExcludedAppsDialog(
                 if (apps == null) {
                     DialogEmptyState(text = stringResource(R.string.excluded_apps_loading))
                 } else {
-                    val missing = excludedApps
-                        .filter { pkg -> apps.none { it.packageName == pkg } }
-                        .map { InstalledAppInfo(packageName = it, label = it, isSystemApp = false) }
-                    val all = (apps + missing).sortedBy { it.label.lowercase() }
-                    val filtered = all.filter { app ->
-                        (showSystemApps || !app.isSystemApp) &&
-                            (
-                                query.isBlank() ||
-                                    app.label.contains(query, ignoreCase = true) ||
-                                    app.packageName.contains(query, ignoreCase = true)
-                                )
+                    val filtered = remember(apps, excludedApps, showSystemApps, query) {
+                        filterAndSortExcludedApps(
+                            installedApps = apps,
+                            excludedApps = excludedApps,
+                            showSystemApps = showSystemApps,
+                            query = query,
+                        )
                     }
                     DialogCard {
                         ToggleRow(
@@ -321,6 +309,36 @@ fun ExcludedAppsDialog(
             )
         }
     }
+}
+
+/**
+ * 过滤并排序排除应用列表：已勾选的应用（含已勾选的系统应用与已卸载残留包名）始终置顶，
+ * 同组内按应用名称（不区分大小写）及包名稳定排序。
+ */
+internal fun filterAndSortExcludedApps(
+    installedApps: List<InstalledAppInfo>,
+    excludedApps: Set<String>,
+    showSystemApps: Boolean,
+    query: String,
+): List<InstalledAppInfo> {
+    val installedPackages = installedApps.mapTo(HashSet(installedApps.size)) { it.packageName }
+    val missing = excludedApps
+        .filter { pkg -> pkg !in installedPackages }
+        .map { InstalledAppInfo(packageName = it, label = it, isSystemApp = false) }
+    return (installedApps + missing)
+        .filter { app ->
+            (showSystemApps || !app.isSystemApp || app.packageName in excludedApps) &&
+                (
+                    query.isBlank() ||
+                        app.label.contains(query, ignoreCase = true) ||
+                        app.packageName.contains(query, ignoreCase = true)
+                    )
+        }
+        .sortedWith(
+            compareByDescending<InstalledAppInfo> { it.packageName in excludedApps }
+                .thenBy { it.label.lowercase() }
+                .thenBy { it.packageName },
+        )
 }
 
 @Composable
