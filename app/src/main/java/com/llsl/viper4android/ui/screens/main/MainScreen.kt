@@ -106,7 +106,6 @@ import com.llsl.viper4android.ui.components.groupedCardItems
 import com.llsl.viper4android.ui.components.layerBackdrop
 import com.llsl.viper4android.ui.components.rememberBlurBackdrop
 import com.llsl.viper4android.ui.screens.status.DriverStatusDialog
-import com.llsl.viper4android.ui.theme.StatusColors
 import com.llsl.viper4android.ui.theme.ViperTheme
 import com.llsl.viper4android.ui.util.ImmutableList
 import com.llsl.viper4android.ui.util.WideContentBox
@@ -735,12 +734,6 @@ private fun OverviewTab(
                                             contentDescription = stringResource(effect.titleRes),
                                             modifier = Modifier.padding(end = 6.dp),
                                             tint = MiuixTheme.colorScheme.onBackground
-                                        )
-                                    },
-                                    endActions = {
-                                        StatusBadge(
-                                            text = stringResource(R.string.status_active),
-                                            color = StatusColors.healthy
                                         )
                                     },
                                     onClick = { onJumpToEffects(effect.sectionKey) }
